@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام إدارة الحضور والغياب | مدرسة الجشة</title>
+    <meta name="description" content="نظام إلكتروني لمتابعة ومعالجة المشكلات السلوكية للطلاب. نأمل منكم المتابعة المستمرة دعماً لانضباط الطالب.">
+    <meta property="og:title" content="نظام إدارة الحضور والغياب | مدرسة الجشة" />
+    <meta property="og:description" content="اضغط هنا للدخول على الصفحة. نأمل منكم المتابعة المستمرة دعماً لانضباط الطالب." />
+    <meta property="og:url" content="https://hadimm2001-source.github.io" />
+    <meta property="og:type" content="website" />
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+    <div id="loginPortal" class="portal-wrapper">
+        <div class="login-box">
+            <div style="display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto;">
+                <img src="/moe-logo.svg" alt="شعار وزارة التعليم" style="height: 85px; width: auto; max-width: 160px; object-fit: contain;" onerror="this.onerror=null; this.src='/moe-logo.png';" />
+            </div>
+            <h2 id="loginTitle" style="color: var(--text-main); font-weight: 800; margin-bottom: 8px; font-size: 26px;">بوابة الحضور والانضباط</h2>
+            <p style="color: var(--text-muted); font-size: 15px; margin-bottom: 30px; font-weight: 500;">مدرسة الجشة المتوسطة</p>
+            <div id="form-student" class="login-form active">
+                <div style="text-align: right; margin-bottom: 8px;"><label class="form-label" style="display: inline-block; color: var(--text-main);">رقم السجل المدني المسجل:</label></div>
+                <input type="text" id="studentNationalIdInput" class="login-input" placeholder="أدخل رقم السجل المدني (10 أرقام)..." dir="ltr" onkeypress="if(event.key === 'Enter') window.checkStudentLogin()">
+                <button class="login-btn" style="background: var(--success);" onclick="window.checkStudentLogin()">استعلام عن الطالب 🔍</button>
+                <div style="margin-top: 25px; text-align: center;"><span onclick="window.switchLoginTab('admin')" style="color: var(--text-muted); font-size: 14px; font-weight: 700; cursor: pointer;">دخول الإدارة النظامية</span></div>
+            </div>
+            <div id="form-admin" class="login-form">
+                <div style="text-align: right; margin-bottom: 8px;"><label class="form-label" style="display: inline-block; color: var(--text-main);">كلمة المرور الخاصة بالإدارة:</label></div>
+                <input type="password" id="adminPassword" class="login-input" placeholder="أدخل كلمة المرور..." onkeypress="if(event.key === 'Enter') window.checkAdminLogin()">
+                <button class="login-btn" onclick="window.checkAdminLogin()">دخول للإدارة 🔐</button>
+                <div style="margin-top: 25px; text-align: center;"><span onclick="window.switchLoginTab('student')" style="color: var(--primary); font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: underline;">العودة لبوابة الاستعلام</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container" id="appContainer" style="display: none;">
+        <!-- الهيدر الرئيسي للوحة التحكم -->
+        <header>
+            <div class="header-title">
+                <div class="header-brand-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                        <path d="M2 17l10 5 10-5"></path>
+                        <path d="M2 12l10 5 10-5"></path>
+                    </svg>
+                </div>
+                <div>
+                    <span style="display: block; line-height: 1.2;">نظام إدارة الحضور والغياب</span>
+                    <span class="cloud-pill" style="margin-top: 4px;">
+                        <span id="cloudSyncStatus" style="width: 8px; height: 8px; background-color: #10b981; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.4);" title="حالة الاتصال بالسحابة"></span>
+                        سحابي مباشر
+                    </span>
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                <div style="font-size: 11px; background: rgba(255,255,255,0.18); padding: 5px 12px; border-radius: 20px; font-weight: 800; border: 1px solid rgba(255,255,255,0.22); letter-spacing: 0.5px;">
+                    إصدار V3.0
+                </div>
+                
+                <div class="date-display">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    <span id="currentDate"></span>
+                </div>
+
+                <div class="user-profile-badge">
+                    <div class="user-avatar-circle">ع م</div>
+                    <div style="display: flex; flex-direction: column; text-align: right;">
+                        <span style="font-size: 13.5px; font-weight: 800; line-height: 1.2;">عبدالهادي المحسن</span>
+                        <span style="font-size: 10.5px; font-weight: 600; color: rgba(255,255,255,0.85); line-height: 1.2;">مدرسة الجشة المتوسطة</span>
+                    </div>
+                    <button class="header-logout-btn" onclick="window.logoutToPortal()" title="تسجيل الخروج من لوحة التحكم">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                        <span>خروج</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- بطاقات الإحصاءات التفاعلية -->
+        <div class="stats-grid">
+            <div class="stat-card c-total">
+                <div class="stat-info">
+                    <h3>إجمالي الطلاب</h3>
+                    <p id="stat-total" style="color: #4f46e5;">0</p>
+                    <span class="stat-subtext">مسجل بالمدرسة</span>
+                </div>
+                <div class="stat-icon bg-primary-light text-primary">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="stat-card c-present">
+                <div class="stat-info">
+                    <h3>حاضر اليوم</h3>
+                    <p>
+                        <span id="stat-present" style="color: #059669;">0</span>
+                        <span id="stat-present-pct" class="pct-badge pct-success">0%</span>
+                    </p>
+                    <span class="stat-subtext">نسبة المواظبة اليومية</span>
+                </div>
+                <div class="stat-icon bg-success-light text-success">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="stat-card c-absent">
+                <div class="stat-info">
+                    <h3>غائب اليوم</h3>
+                    <p>
+                        <span id="stat-absent" style="color: #e11d48;">0</span>
+                        <span id="stat-absent-pct" class="pct-badge pct-danger">0%</span>
+                    </p>
+                    <span class="stat-subtext">غياب مسجل غير مبرر</span>
+                </div>
+                <div class="stat-icon bg-danger-light text-danger">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="stat-card c-excused" id="statCardExcused">
+                <div class="stat-info">
+                    <h3>غائب بعذر</h3>
+                    <p>
+                        <span id="stat-excused" style="color: #0284c7;">0</span>
+                        <span id="stat-excused-pct" class="pct-badge pct-info">0%</span>
+                    </p>
+                    <span class="stat-subtext">غياب مبرر ومقبول</span>
+                </div>
+                <div class="stat-icon bg-info-light text-info">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="stat-card c-late">
+                <div class="stat-info">
+                    <h3>متأخر اليوم</h3>
+                    <p>
+                        <span id="stat-late" style="color: #d97706;">0</span>
+                        <span id="stat-late-pct" class="pct-badge pct-warning">0%</span>
+                    </p>
+                    <span class="stat-subtext">تأخر عن الاصطفاف الصباحي</span>
+                </div>
+                <div class="stat-icon bg-warning-light text-warning">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- شريط التوجيه والتحليل المتقدم (الأيقونات والميزات المباشرة) -->
+        <div class="guidance-executive-bar">
+            <!-- 1. تنبيه للغياب -->
+            <div class="guidance-card" onclick="window.openAbsenceAlertsModal()" style="background: linear-gradient(135deg, #fff1f2, #ffe4e6); border-color: #fecdd3;">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div class="guidance-icon-box" style="background: linear-gradient(135deg, #f43f5e, #e11d48); box-shadow: 0 4px 12px rgba(225, 29, 72, 0.3);">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 style="font-size: 15px; font-weight: 800; color: #9f1239; margin-bottom: 3px; display: flex; align-items: center; gap: 6px;">
+                            تنبيهات الغياب
+                            <span id="todayAbsentBadge" style="background: #e11d48; color: white; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 800;">0</span>
+                        </h4>
+                        <span style="font-size: 12px; color: #be123c; font-weight: 600;">رصد وإشعار الغياب الفوري لولي الأمر</span>
+                    </div>
+                </div>
+                <div style="color: #e11d48; display: flex; align-items: center;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </div>
+            </div>
+
+            <!-- 2. رسوم بيانية للغياب والتأخر والحضور -->
+            <div class="guidance-card" onclick="window.openChartsModal()" style="background: linear-gradient(135deg, #eff6ff, #dbeafe); border-color: #bfdbfe;">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div class="guidance-icon-box" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 style="font-size: 15px; font-weight: 800; color: #1e40af; margin-bottom: 3px;">الرسوم البيانية</h4>
+                        <span style="font-size: 12px; color: #2563eb; font-weight: 600;">تحليل الحضور والغياب والتأخر</span>
+                    </div>
+                </div>
+                <div style="color: #2563eb; display: flex; align-items: center;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </div>
+            </div>
+
+            <!-- 3. خطة علاجية لكثرة الغياب -->
+            <div class="guidance-card" onclick="window.openAbsenceRemedialModal()" style="background: linear-gradient(135deg, #ecfdf5, #d1fae5); border-color: #a7f3d0;">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div class="guidance-icon-box" style="background: linear-gradient(135deg, #10b981, #047857); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                            <path d="m9 14 2 2 4-4"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 style="font-size: 15px; font-weight: 800; color: #065f46; margin-bottom: 3px; display: flex; align-items: center; gap: 6px;">
+                            خطة علاج الغياب
+                            <span id="absencePlanBadge" style="background: #059669; color: white; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 800;">0</span>
+                        </h4>
+                        <span style="font-size: 12px; color: #047857; font-weight: 600;">معالجة مرحلية ونماذج متابعة</span>
+                    </div>
+                </div>
+                <div style="color: #059669; display: flex; align-items: center;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </div>
+            </div>
+
+            <!-- 4. خطة علاجية لكثرة التأخر الصباحي -->
+            <div class="guidance-card" onclick="window.openTardinessRemedialModal()" style="background: linear-gradient(135deg, #fffbeb, #fef3c7); border-color: #fde68a;">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div class="guidance-icon-box" style="background: linear-gradient(135deg, #f59e0b, #b45309); box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="13" r="8"></circle>
+                            <path d="M12 9v4l2 2"></path>
+                            <path d="m5 3 2 2"></path>
+                            <path d="m19 3-2 2"></path>
+                            <path d="M6 19l-2 2"></path>
+                            <path d="M18 19l2 2"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 style="font-size: 15px; font-weight: 800; color: #92400e; margin-bottom: 3px; display: flex; align-items: center; gap: 6px;">
+                            خطة علاج التأخر
+                            <span id="tardinessPlanBadge" style="background: #d97706; color: white; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 800;">0</span>
+                        </h4>
+                        <span style="font-size: 12px; color: #b45309; font-weight: 600;">معالجة التأخر وبرنامج البكور</span>
+                    </div>
+                </div>
+                <div style="color: #d97706; display: flex; align-items: center;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- منطقة أدوات التحكم والفلاتر وآلة الزمن -->
+        <div class="controls-section">
+            <!-- شريط آلة الزمن (سجلات الأيام السابقة) -->
+            <div class="time-machine-bar">
+                <div class="tm-info">
+                    <div class="tm-icon-box">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                    </div>
+                    <div>
+                        <strong style="font-size: 15.5px; color: var(--text-main); display: block;">آلة الزمن (سجلات الأيام السابقة)</strong>
+                        <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">استعراض أو تعديل غياب وتأخير الطلاب لتواريخ سابقة</span>
+                    </div>
+                </div>
+
+                <div class="tm-actions">
+                    <button id="btnPrevArchiveDay" class="tm-btn" onclick="window.goToPreviousArchiveDay()" title="الانتقال لليوم السابق (الأقدم)">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        <span>اليوم السابق</span>
+                    </button>
+
+                    <div class="tm-select-wrapper">
+                        <select id="historyDateSelector" class="tm-select" onchange="window.loadHistoricalData(this.value)">
+                            <option value="" style="color: #1e293b; background: white;">📑 سجل الأرشيف ورصد الغياب (شهر 9 وجميع الأيام)</option>
+                        </select>
+                        <div class="tm-select-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </div>
+                    </div>
+
+                    <div class="tm-date-picker-box" style="display: inline-flex; align-items: center; gap: 6px; background: white; border: 1.5px solid #bae6fd; border-radius: 10px; padding: 7px 12px; box-shadow: var(--shadow-xs);">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2.4"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        <span style="font-size: 12px; font-weight: 800; color: #0369a1; white-space: nowrap;">تحديد تاريخ:</span>
+                        <input type="date" id="historyDatePicker" style="border: none; outline: none; background: transparent; font-family: 'Tajawal', sans-serif; font-size: 13px; font-weight: 700; color: #0f172a; cursor: pointer;" onchange="window.onHistoricalDatePicked(this.value)" title="اختر أي تاريخ مخصص لرصد الغياب أو استعراضه">
+                    </div>
+
+                    <button id="btnNextArchiveDay" class="tm-btn" onclick="window.goToNextArchiveDay()" title="الانتقال لليوم التالي (الأحدث)">
+                        <span>اليوم التالي</span>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    </button>
+
+                    <button id="btnReturnToday" class="tm-btn" onclick="window.returnToToday()" style="display:none; color: #059669; border-color: #a7f3d0; background: #ecfdf5;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                        <span>العودة لليوم</span>
+                    </button>
+
+                    <button id="btnDeleteHistoryDay" class="tm-btn" onclick="window.confirmDeleteHistoryDay()" style="display:none; color: #e11d48; border-color: #fecdd3; background: #fff1f2;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        <span>حذف السجل</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- صف الفلاتر والبحث -->
+            <div class="filters-row">
+                <div class="input-group" style="flex: 2;">
+                    <div class="input-icon-prefix">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </div>
+                    <input type="text" id="searchInput" placeholder="البحث برقم الجوال أو اسم الطالب أو السجل المدني..." onkeyup="window.handleFilter()">
+                </div>
+
+                <div class="input-group">
+                    <div class="input-icon-prefix">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                        </svg>
+                    </div>
+                    <select id="classFilter" onchange="window.handleFilter()">
+                        <option value="all">جميع الفصول</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <div class="input-icon-prefix">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                    </div>
+                    <select id="statusFilter" onchange="window.handleFilter()">
+                        <option value="all">جميع حالات الحضور</option>
+                        <option value="present">حاضر</option>
+                        <option value="absent">غائب</option>
+                        <option value="late">متأخر</option>
+                        <option value="excused">بعذر</option>
+                        <option value="none">لم يسجل</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- شريط أزرار التحكم والإجراءات المحدث والمبوب -->
+            <div class="actions-toolbar">
+                <!-- مجموعة 1: التحضير السريع -->
+                <div class="actions-group">
+                    <button id="btnBulkPresent" class="btn" style="background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0;" onclick="window.markBulk('present')">
+                        <span class="btn-icon">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        </span>
+                        <span>الكل حاضر</span>
+                    </button>
+
+                    <button id="btnBulkAbsent" class="btn" style="background: #fff1f2; color: #9f1239; border: 1px solid #fecdd3;" onclick="window.markBulk('absent')">
+                        <span class="btn-icon">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                        </span>
+                        <span>الكل غائب</span>
+                    </button>
+                </div>
+
+                <div class="actions-group-divider"></div>
+
+                <!-- مجموعة 2: الطلاب والأعذار -->
+                <div class="actions-group">
+                    <button class="btn" style="background: linear-gradient(135deg, #4f46e5, #4338ca); color: white; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);" onclick="window.openAddStudent()">
+                        <span class="btn-icon">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                        </span>
+                        <span>إضافة طالب</span>
+                    </button>
+
+                    <button class="btn" style="background: linear-gradient(135deg, #e11d48, #be123c); color: white; box-shadow: 0 4px 12px rgba(225, 29, 72, 0.25); position: relative;" onclick="window.openAdminExcusesModal()">
+                        <span class="btn-icon">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
+                        </span>
+                        <span>الأعذار والمبررات</span>
+                        <span id="pendingExcusesBadge" style="position: absolute; top: -7px; right: -7px; background: #ffb703; color: #78350f; font-size: 11.5px; font-weight: 800; width: 22px; height: 22px; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid white; display: none;">0</span>
+                    </button>
+                </div>
+
+                <div class="actions-group-divider"></div>
+
+                <!-- مجموعة 3: المزامنة وأدوات النظام -->
+                <div class="actions-group">
+                    <button class="btn" style="background: linear-gradient(135deg, #0d9488, #0f766e); color: white; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);" onclick="window.syncDirectly()" title="مزامنة فورية مع قاعدة البيانات السحابية">
+                        <span class="btn-icon">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                        </span>
+                        <span>مزامنة فورية</span>
+                    </button>
+
+                    <button class="btn" style="background: linear-gradient(135deg, #d97706, #b45309); color: white; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.25);" onclick="window.confirmResetMonth()" title="تصفير السجلات لبداية شهر دراسي جديد">
+                        <span class="btn-icon">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><path d="m10 16 4-4m0 4-4-4"></path></svg>
+                        </span>
+                        <span>تصفير شهر جديد</span>
+                    </button>
+
+                    <button class="btn" style="background: #1e293b; color: white; box-shadow: 0 4px 12px rgba(30, 41, 59, 0.25);" onclick="window.openToolsModal()" title="التقارير المتقدمة والنسخ الاحتياطي">
+                        <span class="btn-icon">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+                        </span>
+                        <span>التقارير والأدوات</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <input type="file" id="importExcel" accept=".xlsx, .xls, .csv" style="display: none;" onchange="window.importStudents(event)">
+        <input type="file" id="restoreBackupInput" accept=".json" style="display: none;" onchange="window.restoreBackup(event)">
+
+        <!-- جدول الحضور والانضباط المدرسي -->
+        <div class="table-container">
+            <table id="attendanceTable">
+                <thead>
+                    <tr>
+                        <th style="width: 24%; text-align: right;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                                <span>اسم الطالب</span>
+                            </div>
+                        </th>
+                        <th style="width: 14%; text-align: right;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="16" rx="2"></rect><line x1="7" y1="8" x2="17" y2="8"></line><line x1="7" y1="12" x2="13" y2="12"></line></svg>
+                                <span>السجل المدني</span>
+                            </div>
+                        </th>
+                        <th style="width: 14%; text-align: right;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                                <span>رقم الجوال</span>
+                            </div>
+                        </th>
+                        <th style="width: 12%;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+                                <span>الصف</span>
+                            </div>
+                        </th>
+                        <th style="width: 16%; text-align: center;">
+                            <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+                                <span>التحضير</span>
+                            </div>
+                        </th>
+                        <th style="width: 10%; text-align: center;">
+                            <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                <span>الوقت</span>
+                            </div>
+                        </th>
+                        <th style="width: 10%; text-align: center;">
+                            <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                                <span>إجراءات</span>
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- واجهة الطالب (الداشبورد الفاخر) -->
+    <div class="container" id="studentPortalView" style="padding: 0; max-width: 100%; display: none;"></div>
+    <div id="printArea"></div>
+
+    <!-- النوافذ المنبثقة (Modals) -->
+    <div id="toolsModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3 style="color: var(--text-main);">التقارير والأدوات الشاملة ⚙️</h3>
+                <button class="close-btn" onclick="window.closeModals()">&times;</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+                <button class="modal-btn" style="background: #fff1f2; color: #9f1239; border: 1px solid #fecdd3; justify-content: right; font-size: 15px; box-shadow: none; font-weight: 800;" onclick="window.closeModals(); window.openAbsenceAlertsModal();">🔔 تنبيهات وإشعارات الغياب الفورية</button>
+                <button class="modal-btn" style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; justify-content: right; font-size: 15px; box-shadow: none; font-weight: 800;" onclick="window.closeModals(); window.openChartsModal();">📊 الرسوم البيانية ومؤشرات الانضباط</button>
+                <button class="modal-btn" style="background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; justify-content: right; font-size: 15px; box-shadow: none; font-weight: 800;" onclick="window.closeModals(); window.openAbsenceRemedialModal();">📋 الخطة العلاجية للحد من الغياب المدرسي</button>
+                <button class="modal-btn" style="background: #fffbeb; color: #92400e; border: 1px solid #fde68a; justify-content: right; font-size: 15px; box-shadow: none; font-weight: 800;" onclick="window.closeModals(); window.openTardinessRemedialModal();">⏰ الخطة العلاجية للتأخر الصباحي (فرسان البكور)</button>
+                
+                <div style="height: 1px; background: var(--border-color); margin: 5px 0;"></div>
+
+                <button class="modal-btn" style="background: #f8fafc; color: var(--text-main); border: 1px solid var(--border-color); justify-content: right; font-size: 15px; box-shadow: none;" onclick="window.openTodayReportModal();">📋 إحصائية الحضور اليومية</button>
+                <button class="modal-btn" style="background: #f8fafc; color: var(--text-main); border: 1px solid var(--border-color); justify-content: right; font-size: 15px; box-shadow: none;" onclick="window.openDateModal();">📅 تقرير الغياب لنطاق تاريخ محدد</button>
+                <button class="modal-btn" style="background: #f8fafc; color: var(--text-main); border: 1px solid var(--border-color); justify-content: right; font-size: 15px; box-shadow: none;" onclick="window.openStudentModal();">👤 تقرير تفصيلي بطالب محدد</button>
+                <button class="modal-btn" style="background: #f8fafc; color: var(--text-main); border: 1px solid var(--border-color); justify-content: right; font-size: 15px; box-shadow: none;" onclick="window.openRiskModal();">⚠️ تقرير المنذرين (تجاوزوا 3 أيام غياب)</button>
+                <button class="modal-btn" style="background: #f8fafc; color: var(--text-main); border: 1px solid var(--border-color); justify-content: right; font-size: 15px; box-shadow: none;" onclick="window.openPdfPrintModal();">📄 طباعة أو تصدير تقرير شامل</button>
+                
+                <div style="height: 1px; background: var(--border-color); margin: 5px 0;"></div>
+                
+                <button class="modal-btn" style="background: #f8fafc; color: var(--text-main); border: 1px solid var(--border-color); justify-content: right; font-size: 15px; box-shadow: none;" onclick="document.getElementById('importExcel').click(); window.closeModals();">💻 استيراد بيانات الطلاب من إكسل</button>
+                <button class="modal-btn" style="background: #f8fafc; color: var(--text-main); border: 1px solid var(--border-color); justify-content: right; font-size: 15px; box-shadow: none;" onclick="window.backupData(); window.closeModals();">💾 تحميل نسخة احتياطية للنظام</button>
+                <button class="modal-btn" style="background: #f8fafc; color: var(--text-main); border: 1px solid var(--border-color); justify-content: right; font-size: 15px; box-shadow: none;" onclick="document.getElementById('restoreBackupInput').click(); window.closeModals();">🔄 استعادة النظام من نسخة احتياطية</button>
+                
+                <div style="height: 1px; background: var(--border-color); margin: 5px 0;"></div>
+                <button class="modal-btn" style="background: var(--danger-light); color: var(--danger); border: 1px solid #fecdd3; justify-content: right; font-size: 15px; box-shadow: none;" onclick="window.confirmDeleteAllData();">🗑️ مسح وتصفير جميع بيانات النظام</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="absenceAlertModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 450px; text-align: center; border-top: 5px solid var(--danger);">
+            <div style="width: 70px; height: 70px; background: var(--danger-light); color: var(--danger); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);">
+                <svg width="36" height="36" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            </div>
+            <h3 style="color: var(--text-main); font-size: 22px; font-weight: 800; margin-bottom: 10px;">تنبيه بوجود غياب رُصد لك!</h3>
+            <p style="color: var(--text-muted); font-size: 15px; margin-bottom: 25px; line-height: 1.6;">عزيزي الطالب، لاحظنا وجود غياب مسجل في سجلك. يرجى الانتقال إلى قسم <strong style="color: var(--danger);">الأعذار والمبررات</strong> لرفع عذرك في أقرب وقت لتفادي الخصم من درجات الانضباط.</p>
+            <div style="display: flex; gap: 10px; flex-direction: column;">
+                <button class="modal-btn" style="flex: 1; background: var(--danger); box-shadow: 0 4px 15px rgba(244, 63, 94, 0.3);" onclick="window.goToExcusesSection()">رفع عذر الآن 📎</button>
+                <button class="modal-btn" style="flex: 1; background: #f1f5f9; color: var(--text-main); box-shadow: none;" onclick="window.closeAbsenceAlert()">تذكيري لاحقاً</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="addStudentModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 style="color: var(--primary);">إضافة طالب جديد</h3>
+                <button class="close-btn" onclick="window.closeModals()">&times;</button>
+            </div>
+            <div class="input-group" style="margin-bottom: 15px;">
+                <label class="form-label">اسم الطالب:</label>
+                <input type="text" id="addStudentName" class="form-input" placeholder="أدخل اسم الطالب رباعياً">
+            </div>
+            <div class="input-group" style="margin-bottom: 15px;">
+                <label class="form-label">السجل المدني:</label>
+                <input type="text" id="addStudentNationalId" class="form-input" dir="ltr" placeholder="أدخل رقم السجل (10 أرقام)">
+            </div>
+            <div class="input-group" style="margin-bottom: 15px;">
+                <label class="form-label">الصف / الفصل:</label>
+                <input type="text" id="addStudentClass" class="form-input" placeholder="مثال: أول متوسط-أ">
+            </div>
+            <div class="input-group" style="margin-bottom: 25px;">
+                <label class="form-label">رقم الجوال:</label>
+                <input type="text" id="addStudentPhone" class="form-input" dir="ltr" placeholder="05XXXXXXXX">
+            </div>
+            <button class="modal-btn" style="background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);" onclick="window.saveNewStudent()">إضافة / حفظ ✅</button>
+        </div>
+    </div>
+
+    <div id="editStudentModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 style="color: var(--primary);">تعديل بيانات الطالب</h3>
+                <button class="close-btn" onclick="window.closeModals()">&times;</button>
+            </div>
+            <input type="hidden" id="editStudentId">
+            <div class="input-group" style="margin-bottom: 15px;">
+                <label class="form-label">اسم الطالب:</label>
+                <input type="text" id="editStudentName" class="form-input">
+            </div>
+            <div class="input-group" style="margin-bottom: 15px;">
+                <label class="form-label">السجل المدني:</label>
+                <input type="text" id="editStudentNationalId" class="form-input" dir="ltr">
+            </div>
+            <div class="input-group" style="margin-bottom: 15px;">
+                <label class="form-label">رقم الجوال:</label>
+                <input type="text" id="editStudentPhone" class="form-input" dir="ltr">
+            </div>
+            <div class="input-group" style="margin-bottom: 25px;">
+                <label class="form-label">الصف:</label>
+                <input type="text" id="editStudentClass" class="form-input">
+            </div>
+            <button class="modal-btn" style="background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);" onclick="window.saveStudentEdit()">حفظ التعديلات ✅</button>
+        </div>
+    </div>
+
+    <div id="customAlertModal" class="modal-overlay"><div class="modal-box" style="max-width: 400px; text-align: center;"><h3 id="customAlertTitle" style="color: var(--primary); margin-bottom: 15px; font-size: 20px;">تنبيه</h3><div id="customAlertMessage" style="margin-bottom: 30px; font-size: 16px; color: var(--text-main); font-weight: 500; line-height: 1.6;"></div><div id="customAlertButtons" style="display: flex; gap: 10px; justify-content: center;"></div></div></div>
+    
+    <div id="adminExcusesModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 820px; width: 96%;">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 14px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 40px; height: 40px; border-radius: 10px; background: #fee2e2; color: #e11d48; display: flex; align-items: center; justify-content: center; font-size: 22px;">
+                        📋
+                    </div>
+                    <div>
+                        <h3 style="color: var(--primary); margin: 0; font-size: 18px; font-weight: 800;">إدارة واستعراض الأعذار والمبررات الطبية</h3>
+                        <div style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">استعراض وتحميل التقارير الطبية المرفوعة من أولياء الأمور والطلاب</div>
+                    </div>
+                </div>
+                <button class="close-btn" onclick="window.closeModals()">&times;</button>
+            </div>
+
+            <!-- Excuses Controls & Filters -->
+            <div style="margin: 15px 0 12px 0; display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1; min-width: 220px; position: relative;">
+                        <input type="text" id="adminExcusesSearchInput" class="form-input" style="padding-right: 36px;" placeholder="🔍 بحث باسم الطالب أو الصف أو السجل المدني..." oninput="window.filterAdminExcuses()">
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="btn" style="background: #0284c7; color: white; padding: 7px 14px; font-size: 13px; font-weight: 700; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;" onclick="window.downloadAllAvailableAttachments()" title="تحميل جميع المرفقات المتاحة">
+                            <span>📥</span>
+                            <span>تحميل جميع المرفقات المتوفرة</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Status Filter Pills -->
+                <div style="display: flex; gap: 6px; flex-wrap: wrap; background: #f8fafc; padding: 6px; border-radius: 10px; border: 1px solid var(--border-color);">
+                    <button class="btn excuse-filter-tab active" id="tab-excuse-all" style="padding: 5px 14px; font-size: 12.5px; font-weight: 700; border-radius: 7px; border: none;" onclick="window.setAdminExcusesTab('all')">
+                        الكل (<span id="count-excuse-all">0</span>)
+                    </button>
+                    <button class="btn excuse-filter-tab" id="tab-excuse-pending" style="padding: 5px 14px; font-size: 12.5px; font-weight: 700; border-radius: 7px; border: none;" onclick="window.setAdminExcusesTab('pending')">
+                        ⏳ قيد المراجعة (<span id="count-excuse-pending">0</span>)
+                    </button>
+                    <button class="btn excuse-filter-tab" id="tab-excuse-accepted" style="padding: 5px 14px; font-size: 12.5px; font-weight: 700; border-radius: 7px; border: none;" onclick="window.setAdminExcusesTab('accepted')">
+                        ✓ مقبول (<span id="count-excuse-accepted">0</span>)
+                    </button>
+                    <button class="btn excuse-filter-tab" id="tab-excuse-rejected" style="padding: 5px 14px; font-size: 12.5px; font-weight: 700; border-radius: 7px; border: none;" onclick="window.setAdminExcusesTab('rejected')">
+                        ✗ مرفوض (<span id="count-excuse-rejected">0</span>)
+                    </button>
+                    <button class="btn excuse-filter-tab" id="tab-excuse-hasAttachment" style="padding: 5px 14px; font-size: 12.5px; font-weight: 700; border-radius: 7px; border: none;" onclick="window.setAdminExcusesTab('hasAttachment')">
+                        📎 يحتوي مرفق فقط (<span id="count-excuse-hasAttachment">0</span>)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Hidden input for admin manual attachment -->
+            <input type="file" id="adminAttachFileInput" style="display: none;" accept="image/*,application/pdf" onchange="window.handleAdminAttachFileSelected(this)">
+
+            <div id="adminExcusesContent" style="max-height: 52vh; overflow-y: auto; padding-right: 5px; margin-bottom: 15px;"></div>
+            
+            <div style="border-top: 1px solid var(--border-color); padding-top: 15px;">
+                <div style="display: flex; gap: 15px; margin-bottom: 12px; flex-wrap: wrap; background: #f8fafc; padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="flex:1; min-width: 140px;">
+                        <label class="form-label" style="font-size:12.5px; text-align:right;">من تاريخ:</label>
+                        <input type="date" id="exportExcuseFrom" class="form-input" style="padding: 6px 10px;">
+                    </div>
+                    <div style="flex:1; min-width: 140px;">
+                        <label class="form-label" style="font-size:12.5px; text-align:right;">إلى تاريخ:</label>
+                        <input type="date" id="exportExcuseTo" class="form-input" style="padding: 6px 10px;">
+                    </div>
+                </div>
+                <button class="modal-btn" style="background: linear-gradient(135deg, #10b981, #059669); color: white; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; padding: 12px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); width: 100%;" onclick="window.exportExcusesToWord()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    تصدير بيان الأعذار والمبررات (Word) 📄
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="studentExcuseModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 520px;">
+            <div class="modal-header">
+                <h3 style="color: #008375; display: flex; align-items: center; gap: 8px;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    رفع عذر غياب / تأخير
+                </h3>
+                <button class="close-btn" onclick="window.closeModals()">&times;</button>
+            </div>
+            <div class="input-group" style="margin-bottom: 14px;">
+                <label class="form-label">التاريخ:</label>
+                <input type="date" id="excuseDateInput" class="form-input">
+            </div>
+            <div class="input-group" style="margin-bottom: 14px;">
+                <label class="form-label">نوع العذر:</label>
+                <select id="excuseTypeSelect" class="form-select">
+                    <option value="عذر طبي">عذر طبي (تقرير / إشعار مراجعة)</option>
+                    <option value="عذر عائلي">عذر عائلي</option>
+                    <option value="ظرف طارئ">ظرف طارئ</option>
+                </select>
+            </div>
+            <div class="input-group" style="margin-bottom: 14px;">
+                <label class="form-label">التفاصيل التوضيحية:</label>
+                <textarea id="excuseDescInput" class="form-input" rows="2" placeholder="اكتب تفاصيل إضافية أو اسم المستشفى / المركز الصحي..."></textarea>
+            </div>
+
+            <!-- قسم المرفقات المطور الداعم للكاميرا والملفات -->
+            <div class="input-group" style="margin-bottom: 22px;">
+                <label class="form-label" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span>المرفقات الطبية / الرسمية <span style="color: var(--danger); font-size: 18px; vertical-align: middle;">*</span>:</span>
+                    <span style="font-size: 11.5px; color: var(--text-muted); font-weight: 600;">(صورة التقرير أو ملف PDF)</span>
+                </label>
+
+                <!-- Hidden inputs for native file chooser and mobile camera capture -->
+                <input type="file" id="excuseFileInput" accept="image/*,.pdf" style="display: none;" onchange="window.handleExcuseFileSelected(this)">
+                <input type="file" id="excuseCameraInput" accept="image/*" capture="environment" style="display: none;" onchange="window.handleExcuseFileSelected(this)">
+
+                <!-- Interactive dropzone & capture area -->
+                <div id="excuseUploadDropzone" class="excuse-dropzone" ondragover="event.preventDefault(); this.classList.add('dragover');" ondragleave="this.classList.remove('dragover');" ondrop="window.handleExcuseDrop(event)">
+                    <!-- State 1: No file selected -->
+                    <div id="excuseUploadActions" style="text-align: center; padding: 18px 14px;">
+                        <div style="width: 48px; height: 48px; border-radius: 50%; background: #ecfdf5; color: #008375; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px; border: 2px solid #a7f3d0;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                        </div>
+                        <div style="font-size: 13.5px; font-weight: 800; color: #0f172a; margin-bottom: 4px;">
+                            التقط صورة المرفق الطبي أو ارفق مستنداً
+                        </div>
+                        <p style="font-size: 12px; color: #64748b; margin: 0 0 14px 0;">
+                            يمكنك التصوير مباشرة عبر الكاميرا أو رفع ملف من الجهاز
+                        </p>
+                        
+                        <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+                            <button type="button" class="btn" style="background: linear-gradient(135deg, #008375, #00675b); color: white; border-radius: 10px; padding: 9px 16px; font-size: 13px; font-weight: 800; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(0, 131, 117, 0.3);" onclick="window.triggerCameraCapture()">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                                التقاط بالكاميرا 📸
+                            </button>
+                            <button type="button" class="btn" style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 10px; padding: 9px 16px; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;" onclick="document.getElementById('excuseFileInput').click()">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                اختيار ملف من الجهاز 📁
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- State 2: Attachment Preview Card -->
+                    <div id="excusePreviewCard" style="display: none; padding: 12px; background: #ffffff; border-radius: 10px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div id="excusePreviewThumbWrapper" style="width: 58px; height: 58px; border-radius: 8px; overflow: hidden; background: #f1f5f9; border: 1px solid #cbd5e1; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <img id="excusePreviewThumb" src="" alt="معاينة المرفق" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                                <span id="excusePreviewFileIcon" style="font-size: 26px; display: none;">📄</span>
+                            </div>
+                            <div style="flex: 1; text-align: right; min-width: 0;">
+                                <div id="excusePreviewFileName" style="font-size: 13px; font-weight: 800; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></div>
+                                <div id="excusePreviewMeta" style="font-size: 11px; color: #64748b; margin-top: 2px;"></div>
+                                <div id="excusePreviewSourceBadge" style="display: inline-block; font-size: 10.5px; font-weight: 800; color: #00675b; background: #ecfdf5; padding: 1px 8px; border-radius: 6px; border: 1px solid #a7f3d0; margin-top: 4px;">
+                                    ✓ تم إرفاق المستند بنجاح
+                                </div>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 6px;">
+                                <button type="button" class="btn" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; padding: 5px 10px; border-radius: 8px; font-size: 12px; font-weight: 700;" onclick="window.clearExcuseAttachment()" title="حذف المرفق">
+                                    حذف ✕
+                                </button>
+                                <button type="button" class="btn" style="background: #f0fdf4; color: #008375; border: 1px solid #a7f3d0; padding: 5px 10px; border-radius: 8px; font-size: 12px; font-weight: 700;" onclick="window.triggerCameraCapture()" title="إعادة التقاط صورة">
+                                    إعادة تصوير 📸
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center;">
+                <button class="modal-btn" style="background: linear-gradient(135deg, #008375, #00675b); box-shadow: 0 4px 15px rgba(0, 131, 117, 0.35); width: 100%; border-radius: 12px; padding: 13px; font-size: 15.5px; font-weight: 800;" onclick="window.submitStudentExcuse()">إرسال العذر للإدارة المدرسية 📩</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة التقاط الصور بالكاميرا الحية (Live Camera Modal) -->
+    <div id="liveCameraModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 520px; text-align: center;">
+            <div class="modal-header">
+                <h3 style="color: #008375; display: flex; align-items: center; gap: 8px;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                    التقاط صورة المرفق بالكاميرا
+                </h3>
+                <button class="close-btn" onclick="window.closeLiveCameraModal()">&times;</button>
+            </div>
+
+            <div class="camera-viewfinder-box">
+                <video id="liveCameraVideo" autoplay playsinline muted></video>
+                <div class="camera-viewfinder-overlay"></div>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 15px;">
+                <button type="button" class="btn" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 16px; font-weight: 700;" onclick="window.switchCameraFacing()" id="switchCameraBtn" title="تبديل الكاميرا">
+                    🔄 تبديل الكاميرا
+                </button>
+                <button type="button" class="btn" style="background: linear-gradient(135deg, #008375, #00675b); color: white; border-radius: 10px; padding: 12px 28px; font-size: 15px; font-weight: 800; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(0, 131, 117, 0.4);" onclick="window.takeLiveCameraSnapshot()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                    التقاط الصورة 📸
+                </button>
+                <button type="button" class="btn" style="background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 16px; font-weight: 700;" onclick="window.closeLiveCameraModal()">
+                    إلغاء
+                </button>
+            </div>
+            <div style="font-size: 11.5px; color: #64748b; margin-top: 10px;">
+                💡 تأكد من وضوح بيانات واسم الطالب وتاريخ الإشعار الطبي داخل إطار الصورة
+            </div>
+        </div>
+    </div>
+
+    <div id="attachmentModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 780px; width: 96%;">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 38px; height: 38px; border-radius: 10px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                        📎
+                    </div>
+                    <div>
+                        <h3 id="attachmentModalTitle" style="color: var(--primary); margin: 0; font-size: 17px; font-weight: 800;">استعراض المرفق الطبي</h3>
+                        <div id="attachmentModalSubtitle" style="font-size: 12px; color: var(--text-muted); margin-top: 2px;"></div>
+                    </div>
+                </div>
+                <button class="close-btn" onclick="window.closeModals()">&times;</button>
+            </div>
+            
+            <!-- Toolbar for Download, Print, Rotate -->
+            <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 14px; margin: 14px 0 10px 0; gap: 8px; flex-wrap: wrap;">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button class="btn" style="background: #059669; color: white; padding: 7px 15px; font-size: 13px; font-weight: 700; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; border: none; box-shadow: 0 2px 4px rgba(5, 150, 105, 0.25);" onclick="window.downloadCurrentAttachment()">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        <span>تحميل المرفق 📥</span>
+                    </button>
+                    <button class="btn" style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; padding: 7px 12px; font-size: 13px; font-weight: 700; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;" onclick="window.printCurrentAttachment()">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                        <span>طباعة 🖨️</span>
+                    </button>
+                    <button class="btn" id="attachmentRotateBtn" style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; padding: 7px 12px; font-size: 13px; font-weight: 700; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;" onclick="window.rotateCurrentAttachment()">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                        <span>تدوير 90° 🔄</span>
+                    </button>
+                </div>
+                <button class="btn" style="background: #f1f5f9; color: #475569; padding: 7px 12px; font-size: 12.5px; border-radius: 8px;" onclick="window.openAttachmentInNewTab()">
+                    <span>فتح في تبويب مستقل ↗️</span>
+                </button>
+            </div>
+
+            <div id="attachmentContent" style="text-align: center; max-height: 60vh; overflow-y: auto; background: #f8fafc; border-radius: 12px; padding: 15px; border: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; min-height: 260px;"></div>
+        </div>
+    </div>
+
+    <!-- نافذة كتابة رد وملاحظات الإدارة على عذر الطالب (بدون prompt) -->
+    <div id="adminReplyModal" class="modal-overlay" style="z-index: 1200;">
+        <div class="modal-box" style="max-width: 520px; width: 95%;">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 38px; height: 38px; border-radius: 10px; background: #eff6ff; color: #1e40af; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                        💬
+                    </div>
+                    <div>
+                        <h3 style="color: var(--primary); margin: 0; font-size: 17px; font-weight: 800;">كتابة رد الإدارة المدرسية</h3>
+                        <div id="adminReplyModalStudentInfo" style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;"></div>
+                    </div>
+                </div>
+                <button class="close-btn" onclick="window.closeAdminReplyModal()">&times;</button>
+            </div>
+
+            <div style="padding: 14px 0 6px 0;">
+                <label class="form-label" style="font-size: 13px; font-weight: 700; margin-bottom: 6px; display: block;">
+                    نص رد الإدارة / الملاحظة لولي الأمر والطالب:
+                </label>
+                <textarea id="adminReplyTextInput" class="form-input" rows="4" style="width: 100%; border-radius: 10px; padding: 10px 12px; font-size: 13.5px; line-height: 1.6; resize: vertical;" placeholder="اكتب هنا رد إدارة المدرسة، التوجيه، أو سبب قبول/رفض العذر..."></textarea>
+
+                <!-- قوالب رد سريعة جاهزة -->
+                <div style="margin-top: 12px;">
+                    <div style="font-size: 12px; color: #64748b; font-weight: 700; margin-bottom: 6px;">💡 عبارات سريعة بنقرة واحدة:</div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                        <button type="button" class="btn" style="background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; padding: 4px 10px; font-size: 11.5px; font-weight: 700; border-radius: 6px;" onclick="window.insertQuickReply('تم قبول العذر واعتماده رسمياً، مع تمنياتنا للطالب بالتوفيق والصحة.')">
+                            ✓ تم قبول العذر واعتماده
+                        </button>
+                        <button type="button" class="btn" style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; padding: 4px 10px; font-size: 11.5px; font-weight: 700; border-radius: 6px;" onclick="window.insertQuickReply('يرجى مراجعة وكيل شؤون الطلاب وإحضار التقرير الطبي الأصلي.')">
+                            📄 إحضار التقرير الأصلي
+                        </button>
+                        <button type="button" class="btn" style="background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; padding: 4px 10px; font-size: 11.5px; font-weight: 700; border-radius: 6px;" onclick="window.insertQuickReply('نأمل إعادة إرفاق تقرير طبي رسمي واضح ومختوم يوضح سبب الغياب وتاريخ المراجعة.')">
+                            ⚠️ التقرير غير واضح
+                        </button>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end; flex-wrap: wrap; border-top: 1px solid var(--border-color); padding-top: 14px;">
+                    <button type="button" class="btn" id="adminReplyClearBtn" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; padding: 8px 14px; font-size: 12.5px; font-weight: 700; border-radius: 8px;" onclick="window.clearCurrentAdminReply()">
+                        مسح الرد 🗑️
+                    </button>
+                    <button type="button" class="btn" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 8px 16px; font-size: 13px; font-weight: 700; border-radius: 8px;" onclick="window.closeAdminReplyModal()">
+                        إلغاء
+                    </button>
+                    <button type="button" class="btn" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: white; border: none; padding: 8px 22px; font-size: 13.5px; font-weight: 800; border-radius: 8px; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);" onclick="window.submitAdminReplyFromModal()">
+                        حفظ الرد 💾
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة شرح وحل صلاحيات Google Drive وربط الإيميل -->
+    <div id="googleDriveTroubleshootModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 620px;">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 38px; height: 38px; border-radius: 10px; background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                        🔑
+                    </div>
+                    <div>
+                        <h3 style="color: var(--primary); margin: 0; font-size: 17px; font-weight: 800;">حل مشكلة إذن الوصول في Google Drive</h3>
+                        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">ربط الأعذار ببريد hadi2030mm@gmail.com وحل تعارض الحسابات</div>
+                    </div>
+                </div>
+                <button class="close-btn" onclick="window.closeModals()">&times;</button>
+            </div>
+
+            <div style="padding: 15px 0;">
+                <div style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 10px; padding: 12px 14px; margin-bottom: 16px;">
+                    <strong style="color: #be123c; font-size: 13.5px; display: block; margin-bottom: 4px;">لماذا ظهرت لك رسالة «يجب طلب الإذن بالوصول»؟</strong>
+                    <p style="font-size: 12.5px; color: #881337; margin: 0; line-height: 1.6;">
+                        تظهر هذه الرسالة من شركة Google عندما تفتح رابط مستند أو مجلد درايف، ويكون متصفحك مسجلاً الدخول بحساب بريد شخصي (مثل <strong>hadimm2001@gmail.com</strong>)، بينما الملف الأصلي تم إنشاؤه بحسابك الإداري <strong>hadi2030mm@gmail.com</strong> أو غير متاح للعامة.
+                    </p>
+                </div>
+
+                <h4 style="color: #0f172a; font-size: 14px; margin-bottom: 10px; font-weight: 800;">طرق الحل السريع في دقيقة واحدة:</h4>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px;">
+                        <strong style="color: #0284c7; font-size: 13px; display: block; margin-bottom: 4px;">1️⃣ الحل الأسهل: التبديل إلى حسابك المعتمد</strong>
+                        <div style="font-size: 12px; color: #475569; line-height: 1.5;">
+                            في نفس شاشة قوقل درايف، اضغط على الرابط الأزرق: <strong>«التبديل إلى حساب لديه الإذن بالوصول»</strong> ثم اختر <strong>hadi2030mm@gmail.com</strong> وسيفتح معك الملف فوراً.
+                        </div>
+                    </div>
+
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px;">
+                        <strong style="color: #059669; font-size: 13px; display: block; margin-bottom: 4px;">2️⃣ منح الصلاحية أو جعل الرابط عاماً في Google Drive</strong>
+                        <div style="font-size: 12px; color: #475569; line-height: 1.5;">
+                            افتح مجلد أو ملف الدرايف من حساب <strong>hadi2030mm@gmail.com</strong> واضغط على زر <strong>«مشاركة (Share)»</strong>، ثم غيّر إعدادات الوصول العام إلى: <strong>«أي شخص لديه الرابط (Anyone with the link)»</strong> لفتحه من أي جهاز دون طلب إذن.
+                        </div>
+                    </div>
+
+                    <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 12px;">
+                        <strong style="color: #1e40af; font-size: 13px; display: block; margin-bottom: 4px;">3️⃣ نظام السحابة المباشر مدمج تلقائياً</strong>
+                        <div style="font-size: 12px; color: #1e3a8a; line-height: 1.5;">
+                            كافة الأعذار والتقارير الطبية المرفوعة تُحفظ وتُستعرض وتُنزل مباشرة عبر سحابة النظام إلى جهازك بنقرة واحدة، وتُرسل نسخة إلى <strong>hadi2030mm@gmail.com</strong> دون الحاجة لأي أذونات إضافية.
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 16px; text-align: center;">
+                    <button class="modal-btn" style="background: #0284c7; color: white; padding: 10px 20px; font-size: 13.5px; border-radius: 8px;" onclick="window.closeModals()">
+                        فهمت، إغلاق النافذة ✓
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="todayReportModal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 style="color: var(--primary);">تقرير إحصائية اليوم</h3>
+                <button class="close-btn" onclick="window.closeModals()">&times;</button>
+            </div>
+            <div id="todayReportContent" style="margin-bottom: 25px;"></div>
+            <button onclick="window.exportTodayWordReport()" class="modal-btn" style="background: linear-gradient(135deg, #10b981, #059669); color: white; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; padding: 14px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                تصدير التقرير (Word)
+            </button>
+        </div>
+    </div>
+    
+    <div id="dateModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 980px; width: 95%;">
+            <div class="modal-header">
+                <h3 style="color: #008375; display: flex; align-items: center; gap: 8px;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                    تقرير إحصائية غياب الطلاب لفترة محددة (معتمد وفق معايير وزارة التعليم)
+                </h3>
+                <button class="close-btn" onclick="window.closeModals()">&times;</button>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                <div style="display: flex; gap: 15px; margin-bottom: 12px; flex-wrap: wrap;">
+                    <div style="flex:1; min-width: 160px;">
+                        <label class="form-label" style="font-size:13px; color: #00675b; font-weight: bold;">من تاريخ:</label>
+                        <input type="date" id="fromDate" class="form-input" style="font-family: 'Tajawal', sans-serif;">
+                    </div>
+                    <div style="flex:1; min-width: 160px;">
+                        <label class="form-label" style="font-size:13px; color: #00675b; font-weight: bold;">إلى تاريخ:</label>
+                        <input type="date" id="toDate" class="form-input" style="font-family: 'Tajawal', sans-serif;">
+                    </div>
+                    <div style="flex:1; min-width: 160px;">
+                        <label class="form-label" style="font-size:13px; color: #00675b; font-weight: bold;">تصفية حسب الفصل:</label>
+                        <select id="rangeClassFilter" class="form-select" style="font-family: 'Tajawal', sans-serif;"><option value="all">جميع الفصول</option></select>
+                    </div>
+                </div>
+                <button class="modal-btn" style="background: linear-gradient(135deg, #008375, #00675b); box-shadow: 0 4px 15px rgba(0, 131, 117, 0.3); font-size: 15px;" onclick="window.generateDateRangeReport()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    استخراج التقرير الإحصائي للفترة
+                </button>
+            </div>
+            
+            <div id="dateRangeReportContainer" style="display: none; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                <div id="dateRangeReportContent" style="margin-bottom: 20px; max-height: 480px; overflow-y: auto; overflow-x: auto; padding-right: 5px;"></div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="modal-btn" style="flex: 1; min-width: 170px; background: linear-gradient(135deg, #008375, #00675b); color: white; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; padding: 12px; border-radius: 10px; font-weight: 800; box-shadow: 0 4px 15px rgba(0, 131, 117, 0.25);" onclick="window.exportDateRangeToWord()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        حفظ التقرير بصيغة (Word) 📄
+                    </button>
+                    <button class="modal-btn" id="btnDateRangePdfDownload" style="flex: 1; min-width: 170px; background: linear-gradient(135deg, #e11d48, #be123c); color: white; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; padding: 12px; border-radius: 10px; font-weight: 800; box-shadow: 0 4px 15px rgba(225, 29, 72, 0.25);" onclick="window.exportDateRangeToPdf()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        تحميل التقرير بصيغة (PDF) 📥
+                    </button>
+                    <button class="modal-btn" style="flex: 1; min-width: 170px; background: linear-gradient(135deg, #1e3a8a, #2563eb); color: white; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; padding: 12px; border-radius: 10px; font-weight: 800; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.25);" onclick="window.printDateRangeReport()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                        طباعة التقرير مباشرة 🖨️
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="pdfPrintModal" class="modal-overlay"><div class="modal-box"><div class="modal-header"><h3>التقرير الشامل للمدرسة</h3><button class="close-btn" onclick="window.closeModals()">&times;</button></div><div style="display: flex; flex-direction: column; gap: 15px; margin-top: 10px;"><button onclick="window.executePdfDownload()" id="pdfDownloadBtn" class="modal-btn" style="background: linear-gradient(135deg, #f43f5e, #e11d48); box-shadow: 0 4px 12px rgba(244, 63, 94, 0.3);">تحميل نسخة PDF 📥</button><button onclick="window.exportGeneralReportToWord()" class="modal-btn" style="background: linear-gradient(135deg, #4f46e5, #4338ca); box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);">تصدير نسخة Word 📄</button><button onclick="window.executeDirectPrint()" class="modal-btn" style="background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">طباعة مباشرة 🖨️</button></div></div></div>
+
+    <div id="studentModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 640px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3 style="color: var(--primary); display: flex; align-items: center; gap: 8px;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    تقرير تفصيلي لطالب
+                </h3>
+                <button class="close-btn" onclick="window.closeModals()">&times;</button>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label class="form-label" style="margin-bottom: 8px; font-weight: 700;">ابحث واختر الطالب من القائمة:</label>
+                <select id="studentSelectDropdown" class="form-select" onchange="window.previewStudentReport(this.value)">
+                    <option value="">-- يرجى الاختيار --</option>
+                </select>
+            </div>
+
+            <div id="reportCaptureArea" style="background: white; border-radius: var(--radius-lg); display: none;">
+                <!-- بطاقة التقرير الموحدة المتوافقة تماماً مع هوية وزارة التعليم -->
+                <div id="studentReportCard" class="moe-report-card" style="margin-bottom: 20px;">
+                    <!-- شريط الهوية الوزارية الأخضر والذهبي -->
+                    <div class="moe-ribbon-bar"></div>
+                    <div class="moe-ribbon-accent"></div>
+
+                    <div style="padding: 24px;">
+                        <!-- الترويسة المدرسية الرسمية بشعار وزارة التعليم -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; text-align: right; flex-wrap: wrap; gap: 12px;">
+                            <div style="text-align: right; line-height: 1.5; font-size: 12.5px; font-weight: 800; color: #00675b;">
+                                <div>المملكة العربية السعودية</div>
+                                <div>وزارة التعليم</div>
+                                <div style="font-size: 12px; font-weight: 700; color: #334155;">الإدارة العامة للتعليم بمحافظة الأحساء</div>
+                                <div style="font-size: 12px; font-weight: 700; color: #334155;">مدرسة الجشة المتوسطة (بنين)</div>
+                            </div>
+                            
+                            <div style="text-align: center; display: flex; flex-direction: column; align-items: center;">
+                                <img src="/moe-logo.svg" alt="شعار وزارة التعليم" style="height: 58px; width: auto; max-width: 140px; object-fit: contain; margin-bottom: 4px;" onerror="this.onerror=null; this.src='/moe-logo.png';" />
+                                <div style="font-size: 16.5px; font-weight: 800; color: #008375; margin-bottom: 2px;">إشعار تقرير انضباط ومواظبة طالب</div>
+                                <span class="moe-badge-official">العام الدراسي 1448هـ | التقرير المعتمد</span>
+                            </div>
+
+                            <div style="text-align: left; font-size: 12px; line-height: 1.6; color: #475569;">
+                                <div><span style="font-weight: 600;">تاريخ التقرير:</span> <strong id="sr-date" dir="ltr" style="font-family: Arial, monospace; font-size: 13px; color: #00675b; font-weight: 800;"></strong></div>
+                                <div><span style="font-weight: 600;">الموجه الطلابي:</span> <strong style="color: #0f172a;">عبدالهادي المحسن</strong></div>
+                                <div><span style="font-weight: 600;">مدير المدرسة:</span> <strong style="color: #0f172a;">أحمد الدوسري</strong></div>
+                            </div>
+                        </div>
+
+                        <!-- خط فاصل بهوية الوزارة -->
+                        <div style="margin: 14px 0 18px 0;">
+                            <div style="height: 2px; background: #008375; width: 100%;"></div>
+                            <div style="height: 1px; background: #d4af37; width: 100%;"></div>
+                        </div>
+
+                        <!-- بيانات الطالب الأساسية -->
+                        <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-right: 4px solid #008375; border-radius: 12px; padding: 14px 18px; margin-bottom: 18px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
+                                <div style="display: flex; gap: 8px;"><span style="color: #64748b; font-weight: 700;">اسم الطالب:</span><strong id="sr-name" style="color: #0f172a; font-weight: 800;"></strong></div>
+                                <div style="display: flex; gap: 8px;"><span style="color: #64748b; font-weight: 700;">الصف والفصل:</span><strong id="sr-class" style="color: #0f172a; font-weight: 800;"></strong></div>
+                                <div style="display: flex; gap: 8px;"><span style="color: #64748b; font-weight: 700;">السجل المدني:</span><strong id="sr-nid" dir="ltr" style="font-family: Arial, monospace; color: #0f172a; font-weight: 800;"></strong></div>
+                                <div style="display: flex; gap: 8px;"><span style="color: #64748b; font-weight: 700;">رقم الجوال:</span><strong id="sr-phone" dir="ltr" style="font-family: Arial, monospace; color: #0f172a; font-weight: 800;"></strong></div>
+                            </div>
+                            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #cbd5e1; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="color: #64748b; font-size: 13px; font-weight: 700;">حالة اليوم:</span>
+                                    <strong id="sr-status" style="font-size: 14px; font-weight: 800;"></strong>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="color: #64748b; font-size: 13px; font-weight: 700;">السمة الغالبة (الترند):</span>
+                                    <span id="sr-trend" style="padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 800;"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- إحصائيات المواظبة التراكمية بهوية وزارة التعليم -->
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; text-align: center;">
+                            <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 10px; padding: 10px 6px;">
+                                <div style="font-size: 11.5px; color: #00675b; font-weight: 700; margin-bottom: 2px;">أيام الحضور</div>
+                                <div id="sr-present-count" style="font-size: 19px; font-weight: 800; color: #059669;">0</div>
+                            </div>
+                            <div style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 10px; padding: 10px 6px;">
+                                <div style="font-size: 11.5px; color: #9f1239; font-weight: 700; margin-bottom: 2px;">تراكمي الغياب</div>
+                                <div id="sr-absences" style="font-size: 19px; font-weight: 800; color: #e11d48;">0</div>
+                            </div>
+                            <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 10px 6px;">
+                                <div style="font-size: 11.5px; color: #92400e; font-weight: 700; margin-bottom: 2px;">مرات التأخر</div>
+                                <div id="sr-late-count" style="font-size: 19px; font-weight: 800; color: #d97706;">0</div>
+                            </div>
+                            <div style="background: #ecfeff; border: 1px solid #a5f3fc; border-radius: 10px; padding: 10px 6px;">
+                                <div style="font-size: 11.5px; color: #155e75; font-weight: 700; margin-bottom: 2px;">الغياب بعذر</div>
+                                <div id="sr-excused-count" style="font-size: 19px; font-weight: 800; color: #0891b2;">0</div>
+                            </div>
+                        </div>
+
+                        <!-- قسم سجل الانضباط الأخير (مدمج وثابت داخل البطاقة) -->
+                        <div id="studentJourney" style="margin-top: 15px; border-top: 2px dashed #e2e8f0; padding-top: 18px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                                <h4 style="font-size: 14.5px; margin: 0; color: #00675b; font-weight: 800; display: flex; align-items: center; gap: 6px;">
+                                    <span>📅</span> سجل الانضباط الأخير:
+                                </h4>
+                                <!-- دليل الرموز اللوني -->
+                                <div style="display: flex; gap: 8px; font-size: 11px; font-weight: 700; background: #f8fafc; padding: 4px 10px; border-radius: 20px; border: 1px solid #e2e8f0; flex-wrap: wrap;">
+                                    <span style="display: flex; align-items: center; gap: 4px; color: #059669;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span>حاضر</span>
+                                    <span style="display: flex; align-items: center; gap: 4px; color: #e11d48;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #f43f5e;"></span>غائب</span>
+                                    <span style="display: flex; align-items: center; gap: 4px; color: #d97706;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #f59e0b;"></span>متأخر</span>
+                                    <span style="display: flex; align-items: center; gap: 4px; color: #0284c7;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #0ea5e9;"></span>بعذر</span>
+                                    <span style="display: flex; align-items: center; gap: 4px; color: #b45309;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #f59e0b;"></span>إجازة رسمية</span>
+                                </div>
+                            </div>
+
+                            <!-- الشريط الزمني التفاعلي للنقاط -->
+                            <div style="background: #0f172a; border-radius: 12px; padding: 18px 14px; margin-bottom: 14px; overflow-x: auto;">
+                                <div style="display: flex; gap: 16px; align-items: center; justify-content: flex-start; min-width: 100%; direction: rtl;" id="sj-dots-path">
+                                    <!-- سيتم تعبئته ديناميكياً -->
+                                </div>
+                            </div>
+
+                            <!-- جدول ملخص الأيام الأخيرة بتنسيق هوية الوزارة -->
+                            <div id="sr-recent-days-table" style="background: #ffffff; border-radius: 10px; border: 1px solid #cbd5e1; overflow: hidden;">
+                                <!-- سيتم تعبئته ديناميكياً -->
+                            </div>
+                        </div>
+
+                        <!-- الإجراء النظامي المعتمد تجاه غياب الطالب (وفق تنظيم وزارة التعليم) -->
+                        <div id="sr-absence-action-section" style="margin-top: 18px; border: 1.5px solid #008375; border-radius: 12px; overflow: hidden; display: none;">
+                            <div id="sr-absence-action-header" style="background: #008375; color: white; padding: 9px 16px; font-size: 13.5px; font-weight: 800; display: flex; justify-content: space-between; align-items: center;">
+                                <span>📋 الإجراءات الواجب اتخاذها تجاه غياب الطالب (المعتمدة وزارياً)</span>
+                                <span id="sr-absence-action-badge" style="background: rgba(255,255,255,0.25); padding: 2px 10px; border-radius: 8px; font-size: 12px; font-weight: 800;"></span>
+                            </div>
+                            <div id="sr-absence-action-body" style="padding: 12px 16px; font-size: 13px; line-height: 1.75; background: #f8fafc; color: #0f172a;">
+                                <!-- يتم تعبئته ديناميكياً بحذافير الإجراءات -->
+                            </div>
+                        </div>
+
+                        <!-- التذييل الرسمي والتوقيعات المعتمدة (مطابقة للتقرير المطبوع) -->
+                        <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #cbd5e1; display: flex; justify-content: space-between; align-items: flex-start; font-size: 13px; text-align: center;">
+                            <div style="width: 32%;">
+                                <div style="font-weight: 800; color: #00675b; margin-bottom: 4px;">الموجه الطلابي</div>
+                                <div style="font-weight: 700; color: #0f172a; font-size: 12.5px;">عبدالهادي بن محمد المحسن</div>
+                                <div style="margin-top: 8px; border-bottom: 1px dashed #94a3b8; width: 80%; margin-left: auto; margin-right: auto;"></div>
+                            </div>
+                            <div style="width: 32%; display: flex; flex-direction: column; align-items: center;">
+                                <div style="font-weight: 800; color: #00675b; margin-bottom: 4px;">ختم المدرسة الرسمي</div>
+                                <div style="width: 58px; height: 58px; border-radius: 50%; border: 2px dashed #008375; display: flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 800; color: #008375; text-align: center; line-height: 1.2; padding: 4px;">
+                                    مدرسة الجشة<br>المتوسطة
+                                </div>
+                            </div>
+                            <div style="width: 32%;">
+                                <div style="font-weight: 800; color: #00675b; margin-bottom: 4px;">مدير المدرسة</div>
+                                <div style="font-weight: 700; color: #0f172a; font-size: 12.5px;">أحمد بن ناصر الدوسري</div>
+                                <div style="margin-top: 8px; border-bottom: 1px dashed #94a3b8; width: 80%; margin-left: auto; margin-right: auto;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- أزرار الإجراءات (حفظ كصورة / طباعة وتصدير PDF / رسالة واتساب) -->
+                <div style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
+                    <button id="captureStudentReportBtn" class="modal-btn" style="flex: 1; min-width: 140px; background: linear-gradient(135deg, #008375, #00675b); color: white; display: none; justify-content: center; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; box-shadow: 0 4px 12px rgba(0, 131, 117, 0.3);" onclick="window.captureStudentReport()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                        حفظ كصورة 📸
+                    </button>
+                    <button id="printStudentReportBtn" class="modal-btn" style="flex: 1; min-width: 140px; background: linear-gradient(135deg, #0f172a, #1e293b); color: white; display: none; justify-content: center; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.3);" onclick="window.printStudentReportCard()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                        طباعة / PDF 🖨️
+                    </button>
+                    <button id="draftAiBtn" class="modal-btn" style="flex: 1; min-width: 140px; background: #25d366; color: white; display: none; justify-content: center; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);" onclick="window.draftParentMessage()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                        رسالة واتساب ✨
+                    </button>
+                </div>
+                
+                <div id="aiLoadingIndicator" class="ai-loading">جاري الصياغة التلقائية...</div>
+                <div id="aiMessageResult" class="ai-box" style="display: none; background: #f0fdf4; border-color: #86efac; margin-top: 15px;">
+                    <p id="aiMessageText" style="color: #166534; font-size: 15px; line-height: 1.6; margin-bottom: 15px;"></p>
+                    <button class="modal-btn" style="background: linear-gradient(135deg, #166534, #14532d);" onclick="window.copyAiMessage()">نسخ النص 📋</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="riskModal" class="modal-overlay"><div class="modal-box" style="max-width: 650px;"><div class="modal-header"><h3 style="color: var(--danger);">تقرير الطلاب المنذرين ⚠️</h3><button class="close-btn" onclick="window.closeModals()">&times;</button></div><div id="riskContent" style="max-height: 350px; overflow-y: auto; padding-right: 5px;"></div><button class="modal-btn" style="background: linear-gradient(135deg, #f43f5e, #e11d48); margin-top: 20px;" onclick="window.exportRiskReportToWord()">استخراج التقرير بالكامل (Word) 📄</button></div></div>
+
+    <!-- نافذة تنبيهات وإشعارات الغياب -->
+    <div id="absenceAlertsModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 780px;">
+            <div class="modal-header" style="border-bottom: 2px solid #fecdd3; padding-bottom: 15px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #f43f5e, #e11d48); color: white; display: flex; align-items: center; justify-content: center; font-size: 22px;">
+                        🔔
+                    </div>
+                    <div>
+                        <h3 style="color: #9f1239; margin: 0; font-size: 19px; font-weight: 800;">تنبيهات وإشعارات الغياب لولي الأمر</h3>
+                        <span style="font-size: 13px; color: var(--text-muted); font-weight: 600;">مدرسة الجشة المتوسطة - قسم التوجيه الطلابي</span>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button class="btn" style="background: #ffe4e6; color: #e11d48; border: 1px solid #fecdd3; padding: 6px 14px; font-size: 13px; font-weight: 700; border-radius: 8px; display: flex; align-items: center; gap: 6px; cursor: pointer;" onclick="window.printAbsenceAlerts()" title="طباعة كشف التنبيهات">
+                        🖨️ طباعة رسمية
+                    </button>
+                    <button class="close-btn" onclick="window.closeModals()">&times;</button>
+                </div>
+            </div>
+
+            <!-- أزرار التبديل بين التنبيه اليومي والإنذار التراكمي -->
+            <div style="display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap;">
+                <button id="alertTabDailyBtn" class="remedial-tab-btn active" onclick="window.switchAlertTab('daily')">
+                    غائب اليوم (<span id="alertDailyCount">0</span>) 📅
+                </button>
+                <button id="alertTabCumulativeBtn" class="remedial-tab-btn" onclick="window.switchAlertTab('cumulative')">
+                    إنذارات الغياب التراكمي (<span id="alertCumulativeCount">0</span>) ⚠️
+                </button>
+            </div>
+
+            <!-- شريط معلومات وإجراءات سريعة -->
+            <div id="alertsActionBanner" style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 12px; padding: 12px 16px; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                <div style="font-size: 13px; color: #9f1239; font-weight: 700;">
+                    💡 يمكنك إرسال إشعار فوري لولي الأمر عبر واتساب مباشرة بضغطة زر واحدة.
+                </div>
+                <button class="btn" style="background: #25d366; color: white; padding: 8px 14px; font-size: 13px; font-weight: 800; border: none;" onclick="window.openAllAbsentWhatsAppDrafts()">
+                    📲 تجهيز رسائل جميع غائبي اليوم
+                </button>
+            </div>
+
+            <!-- محتوى القائمة -->
+            <div id="absenceAlertsContent" style="max-height: 400px; overflow-y: auto; padding-right: 4px;">
+                <!-- يتم حقن البطاقات ديناميكياً هنا -->
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 18px; border-top: 1px solid var(--border-color); padding-top: 15px; flex-wrap: wrap;">
+                <button class="modal-btn" style="flex: 1; background: linear-gradient(135deg, #e11d48, #be123c);" onclick="window.exportAbsenceAlertsToWord()">
+                    تصدير كشف تنبيهات الغياب (Word) 📄
+                </button>
+                <button class="modal-btn" style="background: #0284c7; color: white; max-width: 170px;" onclick="window.printAbsenceAlerts()">
+                    طباعة رسمية 🖨️
+                </button>
+                <button class="modal-btn" style="background: #f1f5f9; color: var(--text-main); max-width: 120px;" onclick="window.closeModals()">
+                    إغلاق
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة الرسوم البيانية والإحصائيات -->
+    <div id="chartsModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 850px;">
+            <div class="modal-header" style="border-bottom: 2px solid #bfdbfe; padding-bottom: 15px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; display: flex; align-items: center; justify-content: center; font-size: 22px;">
+                        📊
+                    </div>
+                    <div>
+                        <h3 style="color: #1e40af; margin: 0; font-size: 19px; font-weight: 800;">الرسوم البيانية ومؤشرات الانضباط المدرسي</h3>
+                        <span style="font-size: 13px; color: var(--text-muted); font-weight: 600;">تحليل بياني تفاعلي للحضور والغياب والتأخر</span>
+                    </div>
+                </div>
+                <button class="close-btn" onclick="window.closeModals()">&times;</button>
+            </div>
+
+            <!-- محدد النطاق الزمني للرسوم البيانية -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; gap: 8px;">
+                    <button id="chartRangeToday" class="remedial-tab-btn active" onclick="window.updateChartsRange('today')">اليوم المحدد</button>
+                    <button id="chartRangeWeek" class="remedial-tab-btn" onclick="window.updateChartsRange('week')">آخر 7 أيام</button>
+                    <button id="chartRangeAll" class="remedial-tab-btn" onclick="window.updateChartsRange('all')">الشهر كاملاً (الأرشيف)</button>
+                </div>
+                <div id="chartSubtitleInfo" style="font-size: 13px; font-weight: 700; color: var(--text-muted);">
+                    تاريخ العرض: <span id="chartsActiveDate">اليوم</span>
+                </div>
+            </div>
+
+            <!-- بطاقات المؤشرات الرقمية -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px;">
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 12px; text-align: center;">
+                    <span style="font-size: 12px; color: #15803d; font-weight: 700; display: block;">نسبة الحضور</span>
+                    <strong id="chartMetricPresent" style="font-size: 22px; color: #166534; font-weight: 800;">0%</strong>
+                </div>
+                <div style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 12px; padding: 12px; text-align: center;">
+                    <span style="font-size: 12px; color: #b91c1c; font-weight: 700; display: block;">نسبة الغياب</span>
+                    <strong id="chartMetricAbsent" style="font-size: 22px; color: #991b1b; font-weight: 800;">0%</strong>
+                </div>
+                <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 12px; text-align: center;">
+                    <span style="font-size: 12px; color: #b45309; font-weight: 700; display: block;">نسبة التأخر</span>
+                    <strong id="chartMetricLate" style="font-size: 22px; color: #92400e; font-weight: 800;">0%</strong>
+                </div>
+                <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; padding: 12px; text-align: center;">
+                    <span style="font-size: 12px; color: #0369a1; font-weight: 700; display: block;">نسبة الأعذار</span>
+                    <strong id="chartMetricExcused" style="font-size: 22px; color: #075985; font-weight: 800;">0%</strong>
+                </div>
+            </div>
+
+            <!-- مؤشرات المتابعة الإرشادية للفصول (أكثر الفصول غياباً وأقلها) -->
+            <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 14px; padding: 14px 16px; margin-bottom: 20px; box-shadow: var(--shadow-sm);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 20px;">🎯</span>
+                        <div>
+                            <h4 style="margin: 0; font-size: 15px; font-weight: 800; color: #1e3a8a;">مؤشرات متابعة الفصول للموجه الطلابي</h4>
+                            <span style="font-size: 12px; color: #64748b;">تحديد الفصول الأكثر غياباً والأكثر انضباطاً للتدخل الإرشادي الفوري والتعزيز</span>
+                        </div>
+                    </div>
+                    <button class="btn" style="background: #f8fafc; border: 1px solid #cbd5e1; color: #1e293b; font-size: 12px; padding: 5px 12px; font-weight: 700; border-radius: 8px; cursor: pointer;" onclick="window.toggleClassesBreakdownTable()">
+                        <span id="toggleClassesTableBtnText">📋 عرض تفاصيل وترتيب جميع الفصول</span>
+                    </button>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
+                    <!-- بطاقة الفصل الأكثر غياباً -->
+                    <div id="chartHighestAbsentCard" style="background: #fff1f2; border: 1.5px solid #fecdd3; border-radius: 12px; padding: 14px; position: relative;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                            <span style="background: #ffe4e6; color: #9f1239; font-size: 11.5px; font-weight: 800; padding: 3px 8px; border-radius: 6px; border: 1px solid #fecdd3;">
+                                ⚠️ الفصل الأكثر غياباً (أولوية المتابعة والتدخل)
+                            </span>
+                            <span id="chartHighestAbsentBadge" style="font-size: 12px; font-weight: 800; color: #e11d48;">-</span>
+                        </div>
+                        <div style="margin-bottom: 6px;">
+                            <h3 id="chartHighestAbsentClass" style="margin: 0; font-size: 19px; font-weight: 800; color: #9f1239;">-</h3>
+                        </div>
+                        <div id="chartHighestAbsentDetails" style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 10px;">
+                            -
+                        </div>
+                        <div style="display: flex; justify-content: flex-end; align-items: center; border-top: 1px dashed #fecdd3; padding-top: 8px; font-size: 11.5px; color: #881337; flex-wrap: wrap; gap: 6px;">
+                            <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                                <button id="btnPrintHighestSessionBtn" class="btn" style="background: #fff1f2; color: #9f1239; border: 1px solid #fecdd3; padding: 4px 10px; font-size: 11.5px; font-weight: 700; border-radius: 6px; cursor: pointer;" onclick="window.exportGroupGuidanceSessionPdf(document.getElementById('btnFilterHighestAbsentClass').dataset.className)" title="تصدير محضر جلسة إرشادية جماعية بصيغة PDF">
+                                    📄 محضر الجلسة الجماعية (PDF)
+                                </button>
+                                <button id="btnFilterHighestAbsentClass" class="btn" style="background: #be123c; color: white; padding: 4px 10px; font-size: 11.5px; font-weight: 700; border-radius: 6px; cursor: pointer;" onclick="window.showClassCounselorFollowup(this.dataset.className)">
+                                    متابعة طلاب الفصل 🔍
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- بطاقة الفصل الأقل غياباً (الأكثر انضباطاً) -->
+                    <div id="chartLowestAbsentCard" style="background: #ecfdf5; border: 1.5px solid #a7f3d0; border-radius: 12px; padding: 14px; position: relative;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                            <span style="background: #d1fae5; color: #065f46; font-size: 11.5px; font-weight: 800; padding: 3px 8px; border-radius: 6px; border: 1px solid #a7f3d0;">
+                                🌟 الفصل الأقل غياباً (الأكثر انضباطاً ومواظبة)
+                            </span>
+                            <span id="chartLowestAbsentBadge" style="font-size: 12px; font-weight: 800; color: #059669;">-</span>
+                        </div>
+                        <div style="margin-bottom: 6px;">
+                            <h3 id="chartLowestAbsentClass" style="margin: 0; font-size: 19px; font-weight: 800; color: #065f46;">-</h3>
+                        </div>
+                        <div id="chartLowestAbsentDetails" style="font-size: 12.5px; color: #475569; line-height: 1.6; margin-bottom: 10px;">
+                            -
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #a7f3d0; padding-top: 8px; font-size: 11.5px; color: #064e3b; flex-wrap: wrap; gap: 6px;">
+                            <span style="font-weight: 800; color: #065f46;">🎖️ الإجراء: شكرهم في الطابور الصباحي</span>
+                            <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                                <button id="btnPrintMorningPraiseBtn" class="btn" style="background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; padding: 4px 10px; font-size: 11.5px; font-weight: 700; border-radius: 6px; cursor: pointer;" onclick="window.exportMorningPraisePdf(document.getElementById('btnFilterLowestAbsentClass').dataset.className)" title="تصدير كلمة شكر وإشادة بالطابور الصباحي بصيغة PDF">
+                                    📄 كلمة شكر الطابور (PDF)
+                                </button>
+                                <button id="btnFilterLowestAbsentClass" class="btn" style="background: #059669; color: white; padding: 4px 10px; font-size: 11.5px; font-weight: 700; border-radius: 6px; cursor: pointer;" onclick="window.showClassCounselorFollowup(this.dataset.className)">
+                                    استعراض الفصل 🔍
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- جدول تفصيلي قابل للطي لترتيب جميع الفصول للمتابعة الإرشادية -->
+                <div id="classesBreakdownContainer" style="display: none; margin-top: 14px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                    <div style="font-size: 13px; font-weight: 800; color: #1e293b; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                        <span>📋 قائمة تصنيف الفصول حسب مستوى الغياب والانضباط:</span>
+                        <span style="font-size: 11.5px; color: #64748b; font-weight: 600;">(اضغط على "متابعة" للتعامل مع طلاب الفصل)</span>
+                    </div>
+                    <div style="max-height: 240px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 8px;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: right;">
+                            <thead style="background: #f1f5f9; color: #334155; position: sticky; top: 0; z-index: 2;">
+                                <tr>
+                                    <th style="padding: 8px 10px; border-bottom: 1px solid #cbd5e1;">الترتيب</th>
+                                    <th style="padding: 8px 10px; border-bottom: 1px solid #cbd5e1;">الفصل</th>
+                                    <th style="padding: 8px 10px; border-bottom: 1px solid #cbd5e1; text-align: center;">الغياب</th>
+                                    <th style="padding: 8px 10px; border-bottom: 1px solid #cbd5e1; text-align: center;">نسبة الغياب</th>
+                                    <th style="padding: 8px 10px; border-bottom: 1px solid #cbd5e1; text-align: center;">التأخر</th>
+                                    <th style="padding: 8px 10px; border-bottom: 1px solid #cbd5e1; text-align: center;">نسبة الحضور</th>
+                                    <th style="padding: 8px 10px; border-bottom: 1px solid #cbd5e1; text-align: center;">توجيه الموجه الطلابي</th>
+                                    <th style="padding: 8px 10px; border-bottom: 1px solid #cbd5e1; text-align: center;">إجراء</th>
+                                </tr>
+                            </thead>
+                            <tbody id="classesBreakdownTableBody">
+                                <!-- يتم ملؤها برمجياً -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- شبكة الرسوم البيانية -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px;">
+                <!-- رسم دائري: توزيع الحالات -->
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; box-shadow: var(--shadow-sm);">
+                    <h4 style="font-size: 15px; font-weight: 800; color: var(--text-main); margin-bottom: 12px; text-align: center;">
+                        توزيع حالات الطلاب (نسب الحضور والغياب) 🥧
+                    </h4>
+                    <div style="position: relative; height: 230px; display: flex; align-items: center; justify-content: center;">
+                        <canvas id="chartStatusDistribution"></canvas>
+                    </div>
+                </div>
+
+                <!-- رسم أعمدة: مقارنة الفصول -->
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; box-shadow: var(--shadow-sm);">
+                    <h4 style="font-size: 15px; font-weight: 800; color: var(--text-main); margin-bottom: 12px; text-align: center;">
+                        مقارنة الغياب والتأخر حسب الفصول 🏫
+                    </h4>
+                    <div style="position: relative; height: 230px;">
+                        <canvas id="chartClassComparison"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- رسم خطي: مسار الانضباط عبر الأيام -->
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; margin-top: 18px; box-shadow: var(--shadow-sm);">
+                <h4 style="font-size: 15px; font-weight: 800; color: var(--text-main); margin-bottom: 12px; text-align: center;">
+                    المسار الزمني لمعدل الانضباط والغياب عبر الأيام 📈
+                </h4>
+                <div style="position: relative; height: 220px;">
+                    <canvas id="chartTimelineTrend"></canvas>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 18px;">
+                <button class="modal-btn" style="background: #f1f5f9; color: var(--text-main); max-width: 140px;" onclick="window.closeModals()">
+                    إغلاق
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة متابعة طلاب الفصل للموجه الطلابي -->
+    <div id="classCounselorModal" class="modal-overlay" style="z-index: 1100;">
+        <div class="modal-box" style="max-width: 820px;">
+            <div class="modal-header" style="border-bottom: 2px solid #bfdbfe; padding-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, #1e40af, #3b82f6); color: white; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                        🏫
+                    </div>
+                    <div>
+                        <h3 id="classCounselorTitle" style="color: #1e3a8a; margin: 0; font-size: 18px; font-weight: 800;">متابعة طلاب الفصل</h3>
+                        <span id="classCounselorSubtitle" style="font-size: 12.5px; color: var(--text-muted); font-weight: 600;">تفاصيل الحضور والغياب والإجراءات الإرشادية والوزارية المطلوبة</span>
+                    </div>
+                </div>
+                <button class="close-btn" onclick="window.closeClassCounselorModal()">&times;</button>
+            </div>
+
+            <!-- بطاقات ملخص الفصل -->
+            <div id="classCounselorStatsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 14px 0;">
+                <!-- ديناميكي -->
+            </div>
+
+            <!-- قائمة الطلاب -->
+            <div style="margin-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span id="classCounselorTableTitle" style="font-weight: 800; font-size: 13.5px; color: #1e293b;">سجل طلاب الفصل والغياب المرصود:</span>
+                    <span id="classCounselorTableBadge" style="font-size: 12px; color: #64748b; font-weight: 700;">-</span>
+                </div>
+                <div id="classCounselorStudentsArea" style="max-height: 380px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 10px; background: white;">
+                    <!-- ديناميكي -->
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 14px; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button id="btnFilterMainTableFromClassModal" class="btn" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-size: 12.5px; font-weight: 700; padding: 6px 14px; border-radius: 8px; cursor: pointer;">
+                        🔍 تصفية وعرض هذا الفصل في جدول الرصد
+                    </button>
+                    <button id="btnModalPrintGroupSession" class="btn" style="background: #fff1f2; color: #9f1239; border: 1px solid #fecdd3; font-size: 12.5px; font-weight: 700; padding: 6px 14px; border-radius: 8px; cursor: pointer;" onclick="window.exportGroupGuidanceSessionPdf()" title="تصدير محضر جلسة إرشادية جماعية بصيغة PDF">
+                        📄 محضر جلسة جماعية (PDF)
+                    </button>
+                    <button id="btnModalPrintMorningPraise" class="btn" style="background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; font-size: 12.5px; font-weight: 700; padding: 6px 14px; border-radius: 8px; cursor: pointer;" onclick="window.exportMorningPraisePdf()" title="تصدير كلمة شكر وإشادة بالطابور الصباحي بصيغة PDF">
+                        📄 كلمة شكر الطابور (PDF)
+                    </button>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="modal-btn" style="background: #f1f5f9; color: var(--text-main); max-width: 120px;" onclick="window.closeClassCounselorModal()">
+                        إغلاق
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة الخطة العلاجية للحد من الغياب المدرسي -->
+    <div id="absenceRemedialModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 850px;">
+            <div class="modal-header" style="border-bottom: 2px solid #a7f3d0; padding-bottom: 15px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #10b981, #047857); color: white; display: flex; align-items: center; justify-content: center; font-size: 22px;">
+                        📋
+                    </div>
+                    <div>
+                        <h3 style="color: #065f46; margin: 0; font-size: 19px; font-weight: 800;">الخطة العلاجية للحد من الغياب المدرسي</h3>
+                        <span style="font-size: 13px; color: var(--text-muted); font-weight: 600;">مدرسة الجشة المتوسطة - قسم التوجيه الطلابي | إعداد: الموجه الطلابي عبدالهادي المحسن</span>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button class="btn" style="background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; padding: 6px 14px; font-size: 13px; font-weight: 700; border-radius: 8px; display: flex; align-items: center; gap: 6px; cursor: pointer;" onclick="window.printAbsenceRemedialPlan()" title="طباعة رسمية للخطة العلاجية">
+                        🖨️ طباعة رسمية
+                    </button>
+                    <button class="close-btn" onclick="window.closeModals()">&times;</button>
+                </div>
+            </div>
+
+            <!-- تبويبات الخطة العلاجية -->
+            <div style="display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap;">
+                <button id="absRemTabStagesBtn" class="remedial-tab-btn active" onclick="window.switchAbsRemTab('stages')">
+                    إجراءات التعامل مع تكرار الغياب (3، 5، 10 أيام) 🛡️
+                </button>
+                <button id="absRemTabStudentsBtn" class="remedial-tab-btn" onclick="window.switchAbsRemTab('students')">
+                    الطلاب المستهدفون بالخطة (<span id="absRemStudentCount">0</span>) 👥
+                </button>
+                <button id="absRemTabGoalsBtn" class="remedial-tab-btn" onclick="window.switchAbsRemTab('goals')">
+                    الأهداف والمؤشرات التربوية 🎯
+                </button>
+            </div>
+
+            <div id="absRemStagesContent" style="max-height: 440px; overflow-y: auto; padding-right: 5px;">
+                <!-- الترويسة الوزارية والتوجيه الفوري -->
+                <div style="background: #ecfdf5; border: 1.5px solid #10b981; border-radius: 12px; padding: 14px 18px; margin-bottom: 14px;">
+                    <div style="font-size: 15px; font-weight: 800; color: #065f46; margin-bottom: 8px;">
+                        📌 يتم التعامل مع الطالب الذي يتكرر غيابه بعذر مقبول (سواء كانت أيام الغياب متصلة أو منفصلة) وفق الإجراءات التالية:
+                    </div>
+                    <div style="font-size: 13.5px; color: #047857; font-weight: 700; background: #ffffff; border: 1px dashed #10b981; padding: 10px 14px; border-radius: 8px; display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 18px;">📞</span>
+                        <span><strong>التواصل مع ولي الأمر في نفس اليوم</strong> الذي تغيب فيه الطالب من خلال <strong>الرسالة النصية أو المكالمة الهاتفية</strong> للاستفسار عن سبب الغياب.</span>
+                    </div>
+                </div>
+
+                <!-- 3 أيام غياب -->
+                <div class="remedial-stage-card" style="border-right: 5px solid #f59e0b; background: #fffbeb; margin-bottom: 14px; border-radius: 12px; padding: 14px 18px; box-shadow: var(--shadow-sm);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="background: #f59e0b; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 14px;">3</span>
+                            <strong style="font-size: 16px; color: #92400e;">3 أيام غياب (سواء كانت متصلة أو منفصلة)</strong>
+                        </div>
+                        <span style="background: #fef3c7; color: #b45309; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 800; border: 1px solid #fde68a;">المستوى الأول</span>
+                    </div>
+                    <ul style="margin: 0; padding-right: 20px; font-size: 13.5px; line-height: 1.8; color: #1e293b;">
+                        <li><strong>تحويل الطالب للموجه الطلابي</strong> لتقديم الدعم والخدمات التربوية المناسبة له (<strong>خطة التعلم في أيام الغياب</strong>)، ودراسة الحالة إذا احتاج الأمر.</li>
+                        <li><strong>استدعاء ولي الأمر، ويعقد اجتماع حضوري معه يتضمن ما يلي:</strong>
+                            <ul style="margin-top: 6px; padding-right: 20px; list-style-type: square; color: #334155;">
+                                <li>إبلاغه بالإجراءات المترتبة على غياب ابنه.</li>
+                                <li>تقييم الخدمات التربوية والخطة العلاجية المقدمة للطالب، وتحديثها بما يلزم وفق الحالة.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- 5 أيام غياب -->
+                <div class="remedial-stage-card" style="border-right: 5px solid #ea580c; background: #fff7ed; margin-bottom: 14px; border-radius: 12px; padding: 14px 18px; box-shadow: var(--shadow-sm);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="background: #ea580c; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 14px;">5</span>
+                            <strong style="font-size: 16px; color: #9a3412;">5 أيام غياب (سواء كانت متصلة أو منفصلة)</strong>
+                        </div>
+                        <span style="background: #ffedd5; color: #c2410c; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 800; border: 1px solid #fed7aa;">المستوى الثاني</span>
+                    </div>
+                    <ul style="margin: 0; padding-right: 20px; font-size: 13.5px; line-height: 1.8; color: #1e293b;">
+                        <li>في حال عدم التزام ولي الأمر بالخطة التربوية (<strong>خطة التعلم في أيام الغياب</strong>)، <strong>يُحال الطالب إلى لجنة التوجيه الطلابي</strong>، ويتم <strong>تنظيم جلسة توعوية مع ولي الأمر</strong>؛ للتأكيد على أهمية اتباع الخطط التربوية والعلاجية.</li>
+                    </ul>
+                </div>
+
+                <!-- 10 أيام غياب -->
+                <div class="remedial-stage-card" style="border-right: 5px solid #e11d48; background: #fff1f2; margin-bottom: 14px; border-radius: 12px; padding: 14px 18px; box-shadow: var(--shadow-sm);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="background: #e11d48; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 14px;">10</span>
+                            <strong style="font-size: 16px; color: #881337;">10 أيام غياب (سواء كانت متصلة أو منفصلة)</strong>
+                        </div>
+                        <span style="background: #ffe4e6; color: #e11d48; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 800; border: 1px solid #fecdd3;">المستوى الثالث (إجراءات نظامية)</span>
+                    </div>
+                    <ul style="margin: 0; padding-right: 20px; font-size: 13.5px; line-height: 1.8; color: #1e293b;">
+                        <li>في حال الاشتباه بتعرض الطالب للإهمال <strong>تخاطب المدرسة الجهات ذات الاختصاص</strong> حيال تطبيق ما ورد في <strong>نظام حماية الطفل ونظام الحماية من الإيذاء ولائحتهما التنفيذية</strong>، و<strong>إشعار إدارة التعليم بذلك</strong>.</li>
+                        <li><strong>تتخذ المدرسة الإجراءات النظامية المطلوبة</strong> بالتنسيق والمتابعة مع الجهات ذات الاختصاص المذكورة في الفقرة السابقة حيال ما تم من إجراءات للحالات المحالة لهم.</li>
+                    </ul>
+                </div>
+
+                <!-- الركيزة المعتمدة -->
+                <div style="background: #008375; color: white; padding: 12px 18px; border-radius: 10px; text-align: center; font-size: 14.5px; font-weight: 800; margin-top: 10px; box-shadow: 0 4px 12px rgba(0, 131, 117, 0.25);">
+                    🌱 استمرارية تقديم الخدمات التعليمية وعدم التسبب في انقطاعها
+                </div>
+            </div>
+
+            <div id="absRemStudentsContent" style="display: none; max-height: 420px; overflow-y: auto; padding-right: 5px;">
+                <!-- جدول الطلاب المستهدفين آلياً -->
+            </div>
+
+            <div id="absRemGoalsContent" style="display: none; max-height: 420px; overflow-y: auto; padding: 10px;">
+                <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 12px; padding: 18px; line-height: 1.8;">
+                    <h4 style="font-size: 16px; font-weight: 800; color: #065f46; margin-bottom: 10px;">🎯 الأهداف العامة للخطة العلاجية:</h4>
+                    <ol style="padding-right: 20px; font-size: 14.5px; color: var(--text-main);">
+                        <li>تقليص الفاقد التعليمي الناتج عن الغياب المتكرر ورفع المستوى التحصيلي للطلاب.</li>
+                        <li>خفض معدلات الغياب غير المبرر بالمدرسة إلى أقل من 3% بما ينسجم مع مؤشرات وزارة التعليم.</li>
+                        <li>تنمية الدافعية الذاتية وحب التعلم والانتماء لمدرسة الجشة المتوسطة.</li>
+                        <li>بناء جسور التواصل المستمر والشراكة الفاعلة مع أولياء الأمور لتعديل سلوك الغياب مبكراً.</li>
+                    </ol>
+                    <h4 style="font-size: 16px; font-weight: 800; color: #065f46; margin: 15px 0 10px 0;">🌟 آليات التحفيز والتعزيز الإيجابي:</h4>
+                    <ul style="padding-right: 20px; font-size: 14.5px; color: var(--text-main);">
+                        <li>تكريم الطلاب المنضبطين في الطابور الصباحي وشهادات شكر شهرية "وسام الانضباط".</li>
+                        <li>مسابقة "الفصل الأكثر مواظبة" وتكريم رائد وطلاب الفصل الفائز شهرياً.</li>
+                        <li>منح نقاط تميز إضافية للطلاب الذين يظهرون تحسناً ملموساً وانضباطاً بعد الخطة العلاجية.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 18px; border-top: 1px solid var(--border-color); padding-top: 15px; flex-wrap: wrap;">
+                <button class="modal-btn" style="flex: 1; background: linear-gradient(135deg, #10b981, #047857);" onclick="window.exportAbsenceRemedialPlanWord()">
+                    تصدير وثيقة الخطة العلاجية للغياب (Word) 📄
+                </button>
+                <button class="modal-btn" style="background: #0284c7; color: white; max-width: 170px;" onclick="window.printAbsenceRemedialPlan()">
+                    طباعة رسمية 🖨️
+                </button>
+                <button class="modal-btn" style="background: #f1f5f9; color: var(--text-main); max-width: 120px;" onclick="window.closeModals()">
+                    إغلاق
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة الخطة العلاجية للتأخر الصباحي -->
+    <div id="tardinessRemedialModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 850px;">
+            <div class="modal-header" style="border-bottom: 2px solid #fde68a; padding-bottom: 15px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #f59e0b, #b45309); color: white; display: flex; align-items: center; justify-content: center; font-size: 22px;">
+                        ⏰
+                    </div>
+                    <div>
+                        <h3 style="color: #92400e; margin: 0; font-size: 19px; font-weight: 800;">الخطة العلاجية للحد من التأخر الصباحي (فرسان البكور)</h3>
+                        <span style="font-size: 13px; color: var(--text-muted); font-weight: 600;">مدرسة الجشة المتوسطة - قسم التوجيه الطلابي | إعداد: الموجه الطلابي عبدالهادي المحسن</span>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button class="btn" style="background: #fef3c7; color: #b45309; border: 1px solid #fde68a; padding: 6px 14px; font-size: 13px; font-weight: 700; border-radius: 8px; display: flex; align-items: center; gap: 6px; cursor: pointer;" onclick="window.printTardinessRemedialPlan()" title="طباعة خطة التأخر الصباحي">
+                        🖨️ طباعة رسمية
+                    </button>
+                    <button class="close-btn" onclick="window.closeModals()">&times;</button>
+                </div>
+            </div>
+
+            <!-- تبويبات الخطة العلاجية للتأخر -->
+            <div style="display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap;">
+                <button id="tardRemTabStagesBtn" class="remedial-tab-btn active" onclick="window.switchTardRemTab('stages')">
+                    مراحل وخطة معالجة التأخر 🌅
+                </button>
+                <button id="tardRemTabStudentsBtn" class="remedial-tab-btn" onclick="window.switchTardRemTab('students')">
+                    الطلاب المتأخرون صباحاً (<span id="tardRemStudentCount">0</span>) ⏰
+                </button>
+                <button id="tardRemTabCharterBtn" class="remedial-tab-btn" onclick="window.switchTardRemTab('charter')">
+                    ميثاق الانضباط الصباحي وتنظيم النوم 📜
+                </button>
+            </div>
+
+            <div id="tardRemStagesContent" style="max-height: 420px; overflow-y: auto; padding-right: 5px;">
+                <!-- المرحلة 1 -->
+                <div class="remedial-stage-card" style="border-right: 5px solid #38bdf8;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <strong style="font-size: 16px; color: #0369a1;">المرحلة 1: الاستقبال الإيجابي والحصر الأولي (1 - 3 مرات تأخر)</strong>
+                        <span style="background: #e0f2fe; color: #0284c7; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 800;">توجيه أولي</span>
+                    </div>
+                    <ul style="margin: 0; padding-right: 20px; font-size: 14px; line-height: 1.7; color: var(--text-main);">
+                        <li>استقبال تربوي هادئ للطالب عند بوابة المدرسة دون توبيخ مع تدوين دقيق لوقت وصوله.</li>
+                        <li>إشعار فوري لولي الأمر عبر رسالة واتساب آلية بوقت وصول الطالب لحثه على تدارك التأخر.</li>
+                        <li>حوار قصير لتذكير الطالب بأهمية الطابور الصباحي، الإذاعة، والتمارين الصباحية في تنشيط الذهن.</li>
+                    </ul>
+                </div>
+
+                <!-- المرحلة 2 -->
+                <div class="remedial-stage-card" style="border-right: 5px solid #f59e0b;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <strong style="font-size: 16px; color: #b45309;">المرحلة 2: المقابلة الإرشادية وتعديل نمط النوم (4 - 6 مرات تأخر)</strong>
+                        <span style="background: #fef3c7; color: #d97706; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 800;">إنذار أول</span>
+                    </div>
+                    <ul style="margin: 0; padding-right: 20px; font-size: 14px; line-height: 1.7; color: var(--text-main);">
+                        <li>جلسة إرشاد فردي مع الموجه الطلابي لبحث أسباب التأخر (السهر، استخدام الهواتف ليلاً، صعوبات المواصلات).</li>
+                        <li>تزويد ولي الأمر بجدول إرشادي لتنظيم أوقات النوم وإيقاف الأجهزة الإلكترونية قبل النوم بساعة.</li>
+                        <li>إشراك الطالب في مهام صباحية جاذبة (الإذاعة المدرسية، رفع العلم، قيادة الطابور) لإيجاد دافع للحضور المبكر.</li>
+                        <li>توقيع تعهد خطي أولي من الطالب بالانضباط الصباحي.</li>
+                    </ul>
+                </div>
+
+                <!-- المرحلة 3 -->
+                <div class="remedial-stage-card" style="border-right: 5px solid #ea580c;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <strong style="font-size: 16px; color: #c2410c;">المرحلة 3: برنامج "فرسان البكور" والتعاقد السلوكي (7 - 9 مرات تأخر)</strong>
+                        <span style="background: #ffedd5; color: #ea580c; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 800;">إنذار ثانٍ</span>
+                    </div>
+                    <ul style="margin: 0; padding-right: 20px; font-size: 14px; line-height: 1.7; color: var(--text-main);">
+                        <li>استدعاء رسمي لولي الأمر لمقر التوجيه الطلابي وتوقيع "عقد التزام البكور المدرسي".</li>
+                        <li>إدراج الطالب في مبادرة "فرسان البكور" مع منحه حوافز ومكافأة تميز عند انضباطه لأسبوعين متتاليين.</li>
+                        <li>التنسيق مع إدارة المدرسة لتذليل أي عوائق تتعلق بالنقل أو الحافلات المدرسية.</li>
+                    </ul>
+                </div>
+
+                <!-- المرحلة 4 -->
+                <div class="remedial-stage-card" style="border-right: 5px solid #e11d48;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <strong style="font-size: 16px; color: #9f1239;">المرحلة 4: الحزم وتطبيق قواعد المواظبة (10 مرات تأخر فأكثر)</strong>
+                        <span style="background: #ffe4e6; color: #e11d48; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 800;">حالة حرجة</span>
+                    </div>
+                    <ul style="margin: 0; padding-right: 20px; font-size: 14px; line-height: 1.7; color: var(--text-main);">
+                        <li>تطبيق لائحة السلوك والمواظبة الوزارية بحسم (0.5) درجة عن كل تأخر غير مبرر بعد استنفاد التنبيهات.</li>
+                        <li>استدعاء نهائي لولي الأمر وإشعاره بالدرجات المحسومة وأثر ذلك على النتيجة العامة للطالب.</li>
+                        <li>إحالة الملف إلى لجنة التوجيه الطلابي بالمدرسة لاتخاذ التدابير التربوية الشاملة.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div id="tardRemStudentsContent" style="display: none; max-height: 420px; overflow-y: auto; padding-right: 5px;">
+                <!-- قائمة الطلاب الأكثر تأخراً -->
+            </div>
+
+            <div id="tardRemCharterContent" style="display: none; max-height: 420px; overflow-y: auto; padding: 10px;">
+                <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 18px; line-height: 1.8;">
+                    <h4 style="font-size: 16px; font-weight: 800; color: #92400e; margin-bottom: 10px;">📜 ميثاق التزام الطابور الصباحي والبكور المدرسي:</h4>
+                    <p style="font-size: 14.5px; color: var(--text-main);">
+                        انطلاقاً من قوله ﷺ: <em>«بورك لأمتي في بكورها»</em>، وحرصاً على مصلحة أبنائنا في مدرسة الجشة المتوسطة، نؤكد على:
+                    </p>
+                    <ul style="padding-right: 20px; font-size: 14.5px; color: var(--text-main);">
+                        <li>الحضور إلى المدرسة قبل بداية الطابور الصباحي في تمام الساعة <strong>6:45 صباحاً</strong>.</li>
+                        <li>تنظيم مواعيد النوم مبكراً بحيث لا يتجاوز وقت نوم الطالب الساعة <strong>9:30 مساءً</strong>.</li>
+                        <li>عدم استخدام الأجهزة الذكية والألعاب الإلكترونية في غرفة النوم ليلاً.</li>
+                        <li>تناول وجبة إفطار صحية خفيفة قبل الخروج من المنزل لتجديد النشاط والتركيز.</li>
+                    </ul>
+                    <div style="margin-top: 15px; border-top: 1px dashed #d97706; padding-top: 12px; font-size: 13.5px; color: #92400e; font-weight: 700;">
+                        الموجه الطلابي: عبدالهادي بن محمد المحسن | مدرسة الجشة المتوسطة - قسم التوجيه الطلابي
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 18px; border-top: 1px solid var(--border-color); padding-top: 15px; flex-wrap: wrap;">
+                <button class="modal-btn" style="flex: 1; background: linear-gradient(135deg, #f59e0b, #b45309);" onclick="window.exportTardinessRemedialPlanWord()">
+                    تصدير وثيقة الخطة العلاجية للتأخر (Word) 📄
+                </button>
+                <button class="modal-btn" style="background: #0284c7; color: white; max-width: 170px;" onclick="window.printTardinessRemedialPlan()">
+                    طباعة رسمية 🖨️
+                </button>
+                <button class="modal-btn" style="background: #f1f5f9; color: var(--text-main); max-width: 120px;" onclick="window.closeModals()">
+                    إغلاق
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة استمارة الخطة العلاجية الفردية للطالب -->
+    <div id="individualPlanModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 720px;">
+            <div class="modal-header">
+                <h3 style="color: var(--primary); margin: 0; font-size: 18px; font-weight: 800;">استمارة خطة المتابعة والعلاج الفردي 📝</h3>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button class="btn" style="background: #0284c7; color: white; border: none; padding: 6px 14px; font-size: 13px; font-weight: 700; border-radius: 8px; display: flex; align-items: center; gap: 6px; cursor: pointer;" onclick="window.downloadIndividualPlanPdf()" title="تصدير الاستمارة بصيغة PDF">
+                        📥 تصدير PDF
+                    </button>
+                    <button class="btn" style="background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; padding: 6px 14px; font-size: 13px; font-weight: 700; border-radius: 8px; display: flex; align-items: center; gap: 6px; cursor: pointer;" onclick="window.printIndividualPlan()" title="طباعة الاستمارة">
+                        🖨️ طباعة الاستمارة
+                    </button>
+                    <button class="close-btn" onclick="window.closeModals()">&times;</button>
+                </div>
+            </div>
+            <div id="individualPlanPrintArea" style="background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; margin: 15px 0; max-height: 480px; overflow-y: auto;">
+                <!-- يتم حقن استمارة الطالب هنا -->
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="modal-btn" style="flex: 1.2; background: #0284c7; color: white;" onclick="window.downloadIndividualPlanPdf()">
+                    تصدير PDF 📥
+                </button>
+                <button class="modal-btn" style="flex: 1; background: var(--primary);" onclick="window.printIndividualPlan()">
+                    طباعة الاستمارة 🖨️
+                </button>
+                <button class="modal-btn" style="background: #25d366; color: white; flex: 1.2;" onclick="window.sendIndividualPlanWhatsApp()">
+                    إرسال واتساب 💬
+                </button>
+                <button class="modal-btn" style="background: #f1f5f9; color: var(--text-main); max-width: 90px;" onclick="window.closeModals()">
+                    إغلاق
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="bottomNotification" class="bottom-notification-bar">
+        <div class="bn-content">
+            <div id="bnIcon" class="bn-icon">🔔</div>
+            <div class="bn-text">
+                <div id="bnTitle" class="bn-title">تنبيه</div>
+                <div id="bnDesc" class="bn-desc">...</div>
+            </div>
+        </div>
+        <div id="bnActions" class="bn-actions"></div>
+    </div>
+
+    <script type="module" src="/src/app.js"></script>
+</body>
+</html>

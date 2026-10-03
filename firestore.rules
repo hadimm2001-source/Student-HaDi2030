@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow read/write for all collections and documents to ensure the app works with password login.
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

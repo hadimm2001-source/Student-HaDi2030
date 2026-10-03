@@ -1,0 +1,10 @@
+{
+  "name": "نظام إدارة الحضور والغياب | مدرسة الجشة",
+  "description": "نظام إلكتروني لمتابعة ومعالجة المشكلات السلوكية للطلاب. نأمل منكم المتابعة المستمرة دعماً لانضباط الطالب.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
